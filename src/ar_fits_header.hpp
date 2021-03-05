@@ -25,30 +25,43 @@ public:
   int new_request() noexcept {}
 
   /// @brief Send the request contained in the instance's m_request_buf.
-  int send_request(bool reply_expected, int &status, int sleep_sec) noexcept {
-    std::size_t bytes_sent = 0, bytes_recv = 0;
-    status = 0;
+  /// Create a (client) socket (to the instance's m_ip and m_port) and send
+  /// the command string contained in the request buffer (m_request_buf).
+  /// Wait/sleep for sleep_sec seconds. If indicated (reply_expected) get
+  /// the response and store it in the response buffer (m_response_buf).
+  /// @param[in] reply_expected The request sent is follwed by a subsequent
+  ///            response from the server. Signal that the reposnse is expected
+  ///            and collect it in the response buffer (m_response_buf).
+  /// @param[in] sleep_sec Sleep for this ammount of sockets after sending
+  ///            the request.
+  /// @return An integer denoting the status of the funtion at return; this 
+  ///             is set as follows:
+  ///             status Value | Function status
+  ///             -------------|-------------------------------- 
+  ///                      -1  | No bytes could be sent to the server
+  ///                      -2  | No bytes received from the server but 
+  ///                          | reply_expected was set
+  ///                       0  | All ok
+  ///                       1  | Exception thrown when connecting to the
+  ///                          | server (aka at client socket construction).
+  int send_request(bool reply_expected, int sleep_sec) noexcept {
+    int status = 0;
     print("\nHeader request on %s:%d", m_ip, m_port);
-    // Create a client socket to send request
+    // Create a client socket to send request and optionaly get response
     try {
-      ClientSocket client_soc(m_ip, m_port); // may throw ....
-      byes_sent = client_soc.send(m_request_buf);
+      // Construct and connect a client socket. May throw ....
+      ClientSocket client_soc(m_ip, m_port);
+      if (!client_soc.send(m_request_buf)) return -1;
       // Need some delay for the telescope
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_sec * 1000));
       if (reply_expected) {
-        bytes_recv = client_soc.recv(m_response_buf, details::RESPONSE_BUF_SZ);
+        if (!client_soc.recv(m_response_buf, details::RESPONSE_BUF_SZ)) return -2;
       }
     } catch (std::exception &e) {
       std::cerr << "\n[ERROR] Exception was thrown during send/receive, while"
                 << " trying to get FITS header information.\n";
       status = 1;
     }
-    if (!byes_sent)
-      status = -1;
-    if (reply_expected && !bytes_recv)
-      status = -2;
-#ifdef DEBUG
-#endif
     return status;
   }
 
@@ -101,6 +114,7 @@ private:
   char m_request_buf[details::REQUEST_BUF_SZ];
   ///< Message received from FITS server
   char m_response_buf[details::RESPONSE_BUF_SZ];
+
   std::string rawMessage;          ///< Returned from FITS server
   std::string ub64message;         ///< Un-bae64'd message
   std::string decodedMessage;      ///< The decoded block
