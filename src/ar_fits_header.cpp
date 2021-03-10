@@ -1,5 +1,51 @@
 #include "ar_fits_header.cpp"
 #include <bzlib.h>
+#ifdef USE_SSL_B64_DECODER
+#include <openssl/evp.h>
+#endif
+
+#ifdef USE_SSL_B64_DECODER
+unsigned char *decode64(const char *ascdata, int length, int& status) {
+  status = 0;
+  const auto pl = 3 * length / 4;
+  auto output = reinterpret_cast<unsigned char *>(calloc(pl + 1, 1));
+  const auto ol = EVP_DecodeBlock(
+      output, reinterpret_cast<const unsigned char *>(ascdata), length);
+  if (pl != ol)
+    status = 1;
+  return output;
+}
+#else
+unsigned char* decode64(const char* ascdata, int length, int& status) {
+  status = 0;
+  int bits_collected = 0;
+  unsigned int accumulator = 0;
+  std::size_t res_sz = 3 * length / 4 + 1;
+  unsigned char *result = new char[res_sz];
+  std::memset(result, '\0', res_sz);
+
+  const char* c = ascdata;
+  int i=0;
+  while (*c) {
+    if (!(std::isspace(*c) || *c == '=')) {
+      // Skip whitespace and padding. Be liberal in what you accept.
+      const int x = (int)(*c);
+      if ((x > 127) || (x < 0) || (reverse_table[x] > 63)) {
+        status = 1;
+        return result;
+      }
+      accumulator = (accumulator << 6) | reverse_table[x];
+      bits_collected += 6;
+      if (bits_collected >= 8) {
+        bits_collected -= 8;
+        result[i++] = static_cast<unsigned char>((accumulator >> bits_collected) & 0xffu);
+      }
+    }
+    ++c;
+  }
+  return result;
+}
+#endif
   
 int ArFitsHeader::send_request(bool reply_expected, int sleep_sec) noexcept {
   int status = 0;
@@ -44,6 +90,8 @@ int ArFitsHeader::fill_request_buffer(const char *request_str) noexcept {
   return 1;
 }
 
+/// 
+/// 
 int ArFitsHeader::decode_message() noexcept {
   constexpr std::size_t mbsz = 1024*1024; //TODO is this too large?
   char buf[mbsz];
@@ -74,6 +122,7 @@ int ArFitsHeader::decode_message() noexcept {
   }
   
   // Add newlines after every 64 characters.
+  // TODO whay do we have to do this? its the way legacy code does it
   int j=0;
   for (int i=msg_start; i<msg_end; i++) {
     if (i % 64 == 0) {
@@ -85,4 +134,6 @@ int ArFitsHeader::decode_message() noexcept {
   }
   buf[j++] = '\n';
   buf[j] = '\0';
+
+  // decode msg from base64 to string
 }
