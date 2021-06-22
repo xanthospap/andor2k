@@ -1,5 +1,5 @@
-#ifndef __ARISTARCHOS_SOCKETS_HPP__
-#define __ARISTARCHOS_SOCKETS_HPP__
+#ifndef __HELMOS_ANDOR2K_SOCKETS_HPP__
+#define __HELMOS_ANDOR2K_SOCKETS_HPP__
 
 #include <arpa/inet.h>
 #include <cerrno>
@@ -14,7 +14,7 @@
 #include <fstream>
 #endif
 
-namespace aristarchos {
+namespace andor2k {
 
 #ifdef SOCKET_LOGGER
 class SocketLogger {
@@ -280,5 +280,5 @@ public:
 private:
   Socket m_socket;
 }; // ServerSocket
-} // namespace aristarchos
+} // andor2k 
 #endif

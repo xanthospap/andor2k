@@ -3,17 +3,17 @@
 
 AC_PREREQ([2.69])
 # AC_INIT (package, version, [bug-report], [tarname], [url])
-AC_INIT([aristarchos],
+AC_INIT([helmosAndor2K],
         [1.0],
         [xanthos@mail.ntua.gr],
-        [aristarchos],
+        [helmos-andor2k],
         [http://dionysos.survey.ntua.gr])
 
 AM_INIT_AUTOMAKE
 
 AC_LANG(C++)
 
-AC_CONFIG_SRCDIR([src/parameter_file.hpp])
+AC_CONFIG_SRCDIR([src/cpp_socket.hpp])
 AC_CONFIG_HEADERS([config.h])
 
 # Libtool

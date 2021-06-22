@@ -7,7 +7,7 @@
 #include <ctime>
 #endif
 
-using aristarchos::ClientSocket;
+using andor2k::ClientSocket;
 
 void chat(const ClientSocket &socket) {
   char buffer[1024];
@@ -34,23 +34,26 @@ void chat(const ClientSocket &socket) {
 
 int main() {
 #ifdef SOCKET_LOGGER
-  aristarchos::SocketLogger log("client_socket.log");
+  printf("Note: Creating socket log file \"client_socket.log\"\n");
+  andor2k::SocketLogger log("client_socket.log");
 #endif
 
   try {
     // create and connect ....
+    printf("Creating client socket ... connecting to localhost at 8080 ...");
 #ifdef SOCKET_LOGGER
     ClientSocket client_socket("127.0.0.1", 8080, &log);
 #else
     ClientSocket client_socket("127.0.0.1", 8080);
 #endif
     // chat with server via the socket
+    printf(" ready! can now talk to server side.\n");
     chat(client_socket);
   } catch (std::exception &e) {
-    std::cerr << "\n[ERROR] Exception caught!";
-    std::cerr << "\n" << e.what();
+    fprintf(stderr, "[ERROR] Exception caught!\n");
+    fprintf(stderr, e.what());
   }
 
-  std::cout << "\nAll done!";
+  printf("All done!\n");
   return 0;
 }

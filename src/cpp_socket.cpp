@@ -7,16 +7,16 @@
 #endif
 
 #ifdef SOCKET_LOGGER
-aristarchos::SocketLogger::SocketLogger(const char *fn)
+andor2k::SocketLogger::SocketLogger(const char *fn)
     : m_logger(fn, std::ios_base::app) {
   if (!m_logger.is_open()) {
     throw std::runtime_error("[ERROR] Failed to open logger");
   }
 }
 
-aristarchos::SocketLogger::~SocketLogger() noexcept { m_logger.close(); }
+andor2k::SocketLogger::~SocketLogger() noexcept { m_logger.close(); }
 
-void aristarchos::SocketLogger::print_msg(int sockid, const char *msg,
+void andor2k::SocketLogger::print_msg(int sockid, const char *msg,
                                           int info_type) {
   assert(m_logger.is_open());
   std::string info_str;
@@ -41,14 +41,14 @@ void aristarchos::SocketLogger::print_msg(int sockid, const char *msg,
 #endif
 
 #ifdef SOCKET_LOGGER
-aristarchos::Socket::Socket(SocketLogger *logger) noexcept
+andor2k::Socket::Socket(SocketLogger *logger) noexcept
     : m_sockid(socket(AF_INET, SOCK_STREAM, 0)), m_logger(logger) {
   if (m_sockid != -1)
     std::memset(&m_address, 0, sizeof(m_address));
   m_logger->print_msg(m_sockid, " Creating new Socket", 10);
 }
 #else
-aristarchos::Socket::Socket() noexcept
+andor2k::Socket::Socket() noexcept
     : m_sockid(socket(AF_INET, SOCK_STREAM, 0)) {
   if (m_sockid != -1)
     std::memset(&m_address, 0, sizeof(m_address));
@@ -56,25 +56,25 @@ aristarchos::Socket::Socket() noexcept
 #endif
 
 #ifdef SOCKET_LOGGER
-aristarchos::Socket::Socket(int sockid, sockaddr_in addr,
+andor2k::Socket::Socket(int sockid, sockaddr_in addr,
                             SocketLogger *logger) noexcept
     : m_sockid(sockid), m_logger(logger)
 #else
-aristarchos::Socket::Socket(int sockid, sockaddr_in addr) noexcept
+andor2k::Socket::Socket(int sockid, sockaddr_in addr) noexcept
     : m_sockid(sockid)
 #endif
 {
   std::memcpy(&m_address, &addr, sizeof(addr));
 }
 
-aristarchos::Socket::~Socket() noexcept {
+andor2k::Socket::~Socket() noexcept {
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Closing Socket", 10);
 #endif
   close(m_sockid);
 }
 
-void aristarchos::Socket::set_sock_addr(int port, const char *ip) noexcept {
+void andor2k::Socket::set_sock_addr(int port, const char *ip) noexcept {
   // m_address.sin_addr.s_addr = ip? (inet_addr(ip)) : (htonl(INADDR_ANY));
   if (ip && !(std::strcmp("localhost", ip))) {
     m_address.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -87,14 +87,14 @@ void aristarchos::Socket::set_sock_addr(int port, const char *ip) noexcept {
   m_address.sin_port = htons(port);
 }
 
-int aristarchos::Socket::send(const char *msg, int flag) const noexcept {
+int andor2k::Socket::send(const char *msg, int flag) const noexcept {
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Sending msg via Socket", 10);
 #endif
   return ::send(m_sockid, msg, std::strlen(msg), flag);
 }
 
-int aristarchos::Socket::recv(char *buffer, std::size_t buf_sz,
+int andor2k::Socket::recv(char *buffer, std::size_t buf_sz,
                               int flag) const noexcept {
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Receiving msg via Socket", 10);
@@ -102,7 +102,7 @@ int aristarchos::Socket::recv(char *buffer, std::size_t buf_sz,
   return ::recv(m_sockid, buffer, buf_sz, flag);
 }
 
-int aristarchos::Socket::bind(int port) noexcept {
+int andor2k::Socket::bind(int port) noexcept {
   set_sock_addr(port);
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Binding Socket to port", 10);
@@ -110,7 +110,7 @@ int aristarchos::Socket::bind(int port) noexcept {
   return ::bind(m_sockid, (struct sockaddr *)&m_address, sizeof(m_address));
 }
 
-int aristarchos::Socket::listen(int max_connections) const noexcept {
+int andor2k::Socket::listen(int max_connections) const noexcept {
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Setting Socket to listen mode", 10);
 #endif
@@ -118,7 +118,7 @@ int aristarchos::Socket::listen(int max_connections) const noexcept {
   return ::listen(m_sockid, maxcon);
 }
 
-aristarchos::Socket aristarchos::Socket::accept(int &status) noexcept {
+andor2k::Socket andor2k::Socket::accept(int &status) noexcept {
   struct sockaddr_in client_sock_addr;
   int len = sizeof(client_sock_addr);
   int client_sock_id = ::accept(m_sockid, (struct sockaddr *)&client_sock_addr,
@@ -135,7 +135,7 @@ aristarchos::Socket aristarchos::Socket::accept(int &status) noexcept {
 #endif
 }
 
-int aristarchos::Socket::connect(const char *ip, int port) noexcept {
+int andor2k::Socket::connect(const char *ip, int port) noexcept {
   /*
   int status = 0;
   if ((status = inet_pton(AF_INET, ip, &m_address.sin_addr)) <= 0)
@@ -148,17 +148,17 @@ int aristarchos::Socket::connect(const char *ip, int port) noexcept {
   return ::connect(m_sockid, (struct sockaddr *)&m_address, sizeof(m_address));
 }
 
-int aristarchos::Socket::set_non_blocking() noexcept {
+int andor2k::Socket::set_non_blocking() noexcept {
   int flags;
   if ((flags = fcntl(m_sockid, F_GETFL)) < 0)
     return flags;
   return fcntl(m_sockid, F_SETFL, flags | O_NONBLOCK);
 }
 
-aristarchos::ClientSocket::ClientSocket(const char *host, int port
+andor2k::ClientSocket::ClientSocket(const char *host, int port
 #ifdef SOCKET_LOGGER
                                         ,
-                                        aristarchos::SocketLogger *logger
+                                        andor2k::SocketLogger *logger
 #endif
                                         )
     : m_socket(
@@ -194,10 +194,10 @@ aristarchos::ClientSocket::ClientSocket(const char *host, int port
   // all done
 }
 
-aristarchos::ServerSocket::ServerSocket(int port
+andor2k::ServerSocket::ServerSocket(int port
 #ifdef SOCKET_LOGGER
                                         ,
-                                        aristarchos::SocketLogger *logger
+                                        andor2k::SocketLogger *logger
 #endif
                                         )
     : m_socket(

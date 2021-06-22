@@ -2,8 +2,8 @@
 #include <cstring>
 #include <iostream>
 
-using aristarchos::ServerSocket;
-using aristarchos::Socket;
+using andor2k::ServerSocket;
+using andor2k::Socket;
 
 void chat(const Socket &socket) {
   char buffer[1024];
@@ -12,9 +12,9 @@ void chat(const Socket &socket) {
     // read message from client into buffer
     socket.recv(buffer, 1024);
     // print client message
-    printf("Got string from client: \"%s\"", buffer);
+    printf("Got string from client: %s", buffer);
     // get message for client
-    printf("Message for client:");
+    printf("Enter message for client:");
     int n = 0;
     ::bzero(buffer, sizeof(buffer));
     while ((buffer[n++] = getchar()) != '\n')
@@ -33,7 +33,8 @@ void chat(const Socket &socket) {
 int main() {
   int status;
 #ifdef SOCKET_LOGGER
-  aristarchos::SocketLogger log("server_socket.log");
+  printf("Note: Creating socket log file \"server_socket.log\"\n");
+  andor2k::SocketLogger log("server_socket.log");
 #endif
 
   try {
@@ -45,17 +46,18 @@ int main() {
 
     Socket child_socket = server_sock.accept(status);
     if (status < 0) {
-      std::cerr << "\n[ERROR] Failed to create child socket!";
+      fprintf(stderr, "[ERROR] Failed to create child socket!\n");
       return 1;
     }
 
+    printf("Server Socket created; client atached and ready!\n");
     chat(child_socket);
 
   } catch (std::exception &e) {
-    std::cerr << "\n[ERROR] Exception caught!";
-    std::cerr << "\n" << e.what();
+    fprintf(stderr, "[ERROR] Exception caught!\n");
+    fprintf(stderr, e.what());
   }
 
-  std::cout << "\nAll done!";
+  printf("All done!\n");
   return 0;
 }

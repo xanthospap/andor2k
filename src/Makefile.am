@@ -1,14 +1,14 @@
 ##
-##  The library will be called: (lib)"aristarchos".
+##  The library will be called: (lib)"helmosandor2k".
 ## ------------------------------------------------
 ##
-lib_LTLIBRARIES = libaristarchos.la
+lib_LTLIBRARIES = libhelmosandor2k.la
 
 ##
 ##  Only use the following flags for debuging purposes.
 ## ----------------------------------------------------
 ##
-libaristarchos_la_CXXFLAGS = \
+libhelmosandor2k_la_CXXFLAGS = \
 	-std=c++17 \
 	-g \
 	-pg \
@@ -29,20 +29,11 @@ libaristarchos_la_CXXFLAGS = \
 ## ------------------------------------------------------------------------
 ##
 pkginclude_HEADERS = \
-        ccd_params.hpp \
-        fits_image.hpp \
-        parameter_file.hpp \
-	fits_header_buffer.hpp \
-        cpp_socket.hpp \
-	fits_filename.hpp
+        cpp_socket.hpp
 
 ##
 ##  Source files (distributed).
 ## ----------------------------
 ##
-dist_libaristarchos_la_SOURCES = \
-        ccd_params.cpp \
-        fitsimage.cpp \
-        parameter_file.cpp \
-	cpp_socket.cpp \
-	fits_filename.cpp
+dist_libhelmosandor2k_la_SOURCES = \
+	cpp_socket.cpp
