@@ -30,6 +30,8 @@ int CameraSelect(int cameraNum = 0) noexcept {
   return 0;
 }
 
+const char *andor_dir = "/usr/local/etc/andor";
+
 int main() {
   if (CameraSelect() < 0) {
     fprintf(stderr, "[ERROR] Failed to get/select camera.\n");
@@ -122,4 +124,51 @@ int main() {
     default:
       printf("Well, exit status denotes nothing .... weird\n");
   }
+
+  int serial = 0;
+  GetCameraSerialNumber(&serial);
+  printf("The camera serial number is: %5d\n", serial);
+
+  AndorCapabilities caps;
+  caps.ulSize = sizeof(AndorCapabilities);
+  GetCapabilities(&caps);
+
+  // check if Software Trigger Mode is available
+  // bit 3 of ulTriggerModes
+  at_u32 ac_triggermode_continuous = (caps.ulTriggerModes >> 3) & (at_u32)1;
+  if (ac_triggermode_continuous) printf("AC_TRIGGERMODE_CONTINUOUS is available!\n");
+  else printf("AC_TRIGGERMODE_CONTINUOUS not available for this camera!\n");
+  printf("ulTriggerMode = %10d\n", caps.ulTriggerModes);
+  for (at_u32 i=0; i<8; i++) {
+    at_u32 ibit = (caps.ulTriggerModes >> (at_u32)i) & (at_u32)1;
+    printf("\tbit %1d of ulTriggerModes is %1d\n", (int)i, (int)ibit);
+  }
+  printf("ulFeatures = %10d\n", caps.ulFeatures);
+  for (at_u32 i=0; i<32; i++) {
+    at_u32 ibit = (caps.ulFeatures >> (at_u32)i) & (at_u32)1;
+    printf("\tbit %2d of ulFeatures is %1d\n", (int)i, (int)ibit);
+  }
+
+  // get detector dimensions
+  int xpixels, ypixels;
+  if (GetDetector(&xpixels, &ypixels)!=DRV_SUCCESS) {
+    fprintf(stderr, "[ERROR] Failed to get detector dimensions\n");
+  }
+  printf("Detector Dimensions: %5dx%5d (x/y pixels)\n", xpixels, ypixels);
+
+  // checks if an iXon camera has a mechanical shutter installed
+  int hasInternalShutter;
+  status=IsInternalMechanicalShutter(&hasInternalShutter);
+  if (status==DRV_SUCCESS) {
+    printf("Camera has Internal Mechanical Shatter: %1d\n", hasInternalShutter);
+  } else if (status==DRV_NOT_AVAILABLE) {
+    printf("Not an iXon Camera!\n");
+  } else {
+    printf("WTF! the function should not answer that way ..... possible ERROR\n");
+  }
+
+  ShutDown();
+
+  printf("all done!\n");
+  return 0;
 }

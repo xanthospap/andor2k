@@ -1,29 +1,20 @@
-#include "fits_filename.hpp"
-#include <iostream>
-
-using namespace aristarchos;
+#include "andor2k.hpp"
+#include <cstdio>
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    std::cerr << "\n[ERROR] Need to provide a directory where FITS files live";
+  
+  CmdParameters params;
+  if (resolve_cmd_parameters(argc, argv, params)) {
+    fprintf(stderr, "[ERROR] Failed resolving cmd parameters.\n");
     return 1;
   }
 
-  int status;
-  char fnstr[64];
+  char fits_fn[256] = {'\0'};
+  if ( get_next_fits_filename(&params, fits_fn) ) {
+    fprintf(stderr, "[ERROR] Failed to get fits filename ... exiting\n");
+  } else {
+    printf("Next fits file to be saved, is \"%s\"\n", fits_fn);
+  }
 
-  auto fn = get_next_FitsFilename(false, 0, status, argv[1]);
-  fn.as_str(&fnstr[0]);
-
-  std::cout << "\nNext file should be: \'" << fnstr << "\', status=" << status;
-
-  fn = get_next_FitsFilename(true, 0, status, argv[1]);
-  fn.as_str(&fnstr[0]);
-  std::cout << "\nor if we are starting a new MultiRun: \'" << fnstr << "\'"
-            << ", status=" << status;
-
-  std::cout << "\nSource directory of the file is \'" << fn.directory << "\'";
-
-  std::cout << "\n";
   return 0;
 }

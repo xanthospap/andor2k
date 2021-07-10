@@ -280,5 +280,5 @@ public:
 private:
   Socket m_socket;
 }; // ServerSocket
-} // andor2k 
+} // namespace andor2k
 #endif

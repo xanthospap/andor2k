@@ -17,7 +17,7 @@ andor2k::SocketLogger::SocketLogger(const char *fn)
 andor2k::SocketLogger::~SocketLogger() noexcept { m_logger.close(); }
 
 void andor2k::SocketLogger::print_msg(int sockid, const char *msg,
-                                          int info_type) {
+                                      int info_type) {
   assert(m_logger.is_open());
   std::string info_str;
   switch (info_type) {
@@ -48,8 +48,7 @@ andor2k::Socket::Socket(SocketLogger *logger) noexcept
   m_logger->print_msg(m_sockid, " Creating new Socket", 10);
 }
 #else
-andor2k::Socket::Socket() noexcept
-    : m_sockid(socket(AF_INET, SOCK_STREAM, 0)) {
+andor2k::Socket::Socket() noexcept : m_sockid(socket(AF_INET, SOCK_STREAM, 0)) {
   if (m_sockid != -1)
     std::memset(&m_address, 0, sizeof(m_address));
 }
@@ -57,7 +56,7 @@ andor2k::Socket::Socket() noexcept
 
 #ifdef SOCKET_LOGGER
 andor2k::Socket::Socket(int sockid, sockaddr_in addr,
-                            SocketLogger *logger) noexcept
+                        SocketLogger *logger) noexcept
     : m_sockid(sockid), m_logger(logger)
 #else
 andor2k::Socket::Socket(int sockid, sockaddr_in addr) noexcept
@@ -95,7 +94,7 @@ int andor2k::Socket::send(const char *msg, int flag) const noexcept {
 }
 
 int andor2k::Socket::recv(char *buffer, std::size_t buf_sz,
-                              int flag) const noexcept {
+                          int flag) const noexcept {
 #ifdef SOCKET_LOGGER
   m_logger->print_msg(m_sockid, " Receiving msg via Socket", 10);
 #endif
@@ -157,10 +156,10 @@ int andor2k::Socket::set_non_blocking() noexcept {
 
 andor2k::ClientSocket::ClientSocket(const char *host, int port
 #ifdef SOCKET_LOGGER
-                                        ,
-                                        andor2k::SocketLogger *logger
+                                    ,
+                                    andor2k::SocketLogger *logger
 #endif
-                                        )
+                                    )
     : m_socket(
 #ifdef SOCKET_LOGGER
           logger
@@ -196,10 +195,10 @@ andor2k::ClientSocket::ClientSocket(const char *host, int port
 
 andor2k::ServerSocket::ServerSocket(int port
 #ifdef SOCKET_LOGGER
-                                        ,
-                                        andor2k::SocketLogger *logger
+                                    ,
+                                    andor2k::SocketLogger *logger
 #endif
-                                        )
+                                    )
     : m_socket(
 #ifdef SOCKET_LOGGER
           logger
