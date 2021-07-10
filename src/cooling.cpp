@@ -7,20 +7,22 @@
 
 using namespace std::chrono_literals;
 
-int cool_to_temperature(const AndorParameters *params) noexcept {
+int cool_to_temperature(int tempC) noexcept {
 
   unsigned int status;
   int current_temp;
+  char tbuf[32] = {'\0'};
 
   // get current temperature
   GetTemperature(&current_temp);
-  printf("[DEBUG] Current camera temperature is %+3d C\n", current_temp);
+  printf("[DEBUG][%s] Current camera temperature is %+3d C\n", date_str(tbuf), current_temp);
 
   // set cooler mode (keep or not temperature at shutdown)
-  printf("[DEBUG] Setting cooler mode to %1d\n", (int)params->cooler_mode_);
+  /*
+  printf("[DEBUG][%s] Setting cooler mode to %1d\n", date_str(tbuf), (int)params->cooler_mode_);
   status = SetCoolerMode(params->cooler_mode_);
   if (status != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR] Failed to set cooler mode!");
+    fprintf(stderr, "[ERROR][%s] Failed to set cooler mode!", tbuf);
     switch (status) {
     case DRV_NOT_INITIALIZED:
       fprintf(stderr, " System is not initialized\n");
@@ -39,13 +41,14 @@ int cool_to_temperature(const AndorParameters *params) noexcept {
       return std::numeric_limits<unsigned int>::max();
     }
   }
+  */
 
   // set target temperature
-  printf("[DEBUG] Setting camera temperature to %+3d C ...\n",
-         params->target_temperature_);
-  status = SetTemperature(params->target_temperature_);
+  printf("[DEBUG][%s] Setting camera temperature to %+3d C ...\n", date_str(tbuf), 
+         tempC);
+  status = SetTemperature(tempC);
   if (status != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR] Failed to set target temperature!");
+    fprintf(stderr, "[ERROR][%s] Failed to set target temperature!", tbuf);
     switch (status) {
     case DRV_NOT_INITIALIZED:
       fprintf(stderr, " System is not initialized\n");
@@ -70,10 +73,10 @@ int cool_to_temperature(const AndorParameters *params) noexcept {
   }
 
   // set on cooling
-  printf("[DEBUG] Starting cooling process ...\n");
+  printf("[DEBUG][%s] Starting cooling process ...\n", date_str(tbuf));
   status = CoolerON();
   if (status != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR] Failed to startup the cooler!");
+    fprintf(stderr, "[ERROR][%s] Failed to startup the cooler!", tbuf);
     switch (status) {
     case DRV_NOT_INITIALIZED:
       fprintf(stderr, " System not initialized!\n");
@@ -95,33 +98,33 @@ int cool_to_temperature(const AndorParameters *params) noexcept {
   while (status != DRV_TEMP_STABILIZED) {
     switch (status) {
     case DRV_NOT_INITIALIZED:
-      fprintf(stderr, "[ERROR] Cooling failed! System not initialized!\n");
+      fprintf(stderr, "[ERROR][%s] Cooling failed! System not initialized!\n", date_str(tbuf));
       return 1;
     case DRV_ACQUIRING:
-      fprintf(stderr, "[ERROR] Cooling failed! Acquisition in progress\n");
+      fprintf(stderr, "[ERROR][%s] Cooling failed! Acquisition in progress\n", date_str(tbuf));
       return 2;
     case DRV_ERROR_ACK:
       fprintf(stderr,
-              "[ERROR] Cooling failed! Unable to communicate with card\n");
+              "[ERROR][%s] Cooling failed! Unable to communicate with card\n", date_str(tbuf));
       return 3;
     case DRV_TEMP_OFF:
-      printf("[DEBUG] Cooler is off\n");
+      printf("[DEBUG][%s] Cooler is off\n", date_str(tbuf));
       break;
     case DRV_TEMP_NOT_REACHED:
-      printf("[DEBUG] Cooling down ... temperature at: %+3d\n", current_temp);
+      printf("[DEBUG][%s] Cooling down ... temperature at: %+3d\n", date_str(tbuf), current_temp);
       break;
     case DRV_TEMP_DRIFT:
-      printf("[DEBUG] Temperature reached but since drifted ... temperature at: %+3d\n", current_temp);
+      printf("[DEBUG][%s] Temperature reached but since drifted ... temperature at: %+3d\n", date_str(tbuf), current_temp);
       break;
     case DRV_TEMP_NOT_STABILIZED:
-      printf("[DEBUG] Temperature reached but not yet stabilized ... temperature at: %+3d\n", current_temp);
+      printf("[DEBUG][%s] Temperature reached but not yet stabilized ... temperature at: %+3d\n", date_str(tbuf), current_temp);
       break;
     }
-    std::this_thread::sleep_for(3000ms);
+    std::this_thread::sleep_for(5000ms);
     status = GetTemperature(&current_temp);
   }
 
-  printf("[DEBUG] Temperature reached and stabilized\n");
+  printf("[DEBUG][%s] Temperature reached and stabilized\n", date_str(tbuf));
   // all done, return
   return 0;
 }

@@ -33,7 +33,6 @@ enum class ShutterMode : int_fast8_t {
 struct AndorParameters {
   int camera_num_{0};
   float exposure_;
-  int target_temperature_{-50};
   int num_images_{1};
 
   char type_[16] = {'\0'};
@@ -82,6 +81,8 @@ inline int ShutterMode2int(ShutterMode sm) noexcept {
   return static_cast<int>(sm);
 }
 
+const char *date_str(char* buf) noexcept;
+
 int setup_read_out_mode(const AndorParameters *) noexcept;
 
 int setup_acquisition_mode(const AndorParameters *) noexcept;
@@ -89,12 +90,14 @@ int setup_acquisition_mode(const AndorParameters *) noexcept;
 int resolve_cmd_parameters(int argc, char *argv[],
                            AndorParameters &params) noexcept;
 
-int cool_to_temperature(const AndorParameters *) noexcept;
+int cool_to_temperature(int temp_in_celsius) noexcept;
 
 int select_camera(int camera_index = 0) noexcept;
 
 int system_shutdown(const AndorParameters *) noexcept;
 
 int get_next_fits_filename(const AndorParameters *params, char *fits_fn) noexcept;
+
+int print_status() noexcept;
 
 #endif
