@@ -30,7 +30,7 @@ enum class ShutterMode : int_fast8_t {
   OpenForAnySeries
 }; // ShutterMode
 
-struct CmdParameters {
+struct AndorParameters {
   int camera_num_{0};
   float exposure_;
   int target_temperature_{-50};
@@ -68,7 +68,7 @@ struct CmdParameters {
   */
   bool cooler_mode_{0};
 
-}; // CmdParameters
+}; // AndorParameters
 
 inline int ReadOutMode2int(ReadOutMode rom) noexcept {
   return static_cast<int>(rom);
@@ -82,19 +82,19 @@ inline int ShutterMode2int(ShutterMode sm) noexcept {
   return static_cast<int>(sm);
 }
 
-int setup_read_out_mode(const CmdParameters *) noexcept;
+int setup_read_out_mode(const AndorParameters *) noexcept;
 
-int setup_acquisition_mode(const CmdParameters *) noexcept;
+int setup_acquisition_mode(const AndorParameters *) noexcept;
 
 int resolve_cmd_parameters(int argc, char *argv[],
-                           CmdParameters &params) noexcept;
+                           AndorParameters &params) noexcept;
 
-int cool_to_temperature(const CmdParameters *) noexcept;
+int cool_to_temperature(const AndorParameters *) noexcept;
 
 int select_camera(int camera_index = 0) noexcept;
 
-int system_shutdown(const CmdParameters *) noexcept;
+int system_shutdown(const AndorParameters *) noexcept;
 
-int get_next_fits_filename(const CmdParameters *params, char *fits_fn) noexcept;
+int get_next_fits_filename(const AndorParameters *params, char *fits_fn) noexcept;
 
 #endif

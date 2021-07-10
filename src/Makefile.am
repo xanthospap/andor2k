@@ -3,7 +3,8 @@
 ## ------------------------------------------------
 ##
 lib_LTLIBRARIES = libhelmosandor2k.la
-bin_PROGRAMS = andor2k
+#bin_PROGRAMS = andor2k \
+#	andor2kd
 
 ##
 ##  Only use the following flags for debuging purposes.
@@ -22,8 +23,7 @@ libhelmosandor2k_la_CXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-march=native \
-	-DDEBUG \
-	-DSOCKET_LOGGER
+	-DDEBUG
 
 MCXXFLAGS = \
 	-std=c++17 \
@@ -64,6 +64,10 @@ dist_libhelmosandor2k_la_SOURCES = \
 	sys_shutdown.cpp \
 	usage.cpp
 
-andor2k_SOURCES = andor2k.cpp
-andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
-andor2k_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor
+#andor2k_SOURCES = andor2k.cpp
+#andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
+#andor2k_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor
+#
+#andor2kd_SOURCES = andor2kd.cpp
+#andor2kd_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
+#andor2kd_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor

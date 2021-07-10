@@ -10,9 +10,9 @@ namespace fs = std::filesystem;
 // forward decleration
 int get_date_string_utc(char *buf) noexcept;
 std::optional<fs::path>
-make_fits_filename(const CmdParameters *params) noexcept;
+make_fits_filename(const AndorParameters *params) noexcept;
 
-int get_next_fits_filename(const CmdParameters *params,
+int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept {
   auto fits_fn_path = make_fits_filename(params);
   if (fits_fn_path) {
@@ -24,7 +24,7 @@ int get_next_fits_filename(const CmdParameters *params,
 }
 
 std::optional<fs::path>
-make_fits_filename(const CmdParameters *params) noexcept {
+make_fits_filename(const AndorParameters *params) noexcept {
 
   char filename[max_fits_filename_size] = {'\0'};
   std::error_code ec;

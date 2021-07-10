@@ -15,8 +15,7 @@ MCXXFLAGS = \
 	-W \
 	-Wshadow \
 	-Wdisabled-optimization \
-	-DDEBUG \
-	-DSOCKET_LOGGER
+	-DDEBUG
 
 # testReadParameterFile_SOURCES   = test_read_parameter_file.cpp
 # testReadParameterFile_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src

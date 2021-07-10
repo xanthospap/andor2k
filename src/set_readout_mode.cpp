@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <limits>
 
-int setup_read_out_mode(const CmdParameters *params) noexcept {
+int setup_read_out_mode(const AndorParameters *params) noexcept {
   unsigned int status;
   int irom = ReadOutMode2int(params->read_out_mode_);
   printf("[DEBUG] Setting ReadOutMode to %1d\n", irom);

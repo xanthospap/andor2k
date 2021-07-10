@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
   unsigned long error;
 
   // command line options
-  CmdParameters params;
+  AndorParameters params;
 
   // resolve command line parameters
   if (resolve_cmd_parameters(argc, argv, params)) {

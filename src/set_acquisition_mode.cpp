@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <limits>
 
-int setup_acquisition_mode(const CmdParameters *params) noexcept {
+int setup_acquisition_mode(const AndorParameters *params) noexcept {
   unsigned int status;
   int imode = AcquisitionMode2int(params->acquisition_mode_);
 

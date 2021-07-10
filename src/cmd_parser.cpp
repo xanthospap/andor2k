@@ -4,7 +4,7 @@
 #include <cstring>
 
 int resolve_cmd_parameters(int argc, char *argv[],
-                           CmdParameters &params) noexcept {
+                           AndorParameters &params) noexcept {
   char *end;
   int i = 1;
   while (i < argc) {

@@ -3,7 +3,7 @@
 
 int main(int argc, char *argv[]) {
   
-  CmdParameters params;
+  AndorParameters params;
   if (resolve_cmd_parameters(argc, argv, params)) {
     fprintf(stderr, "[ERROR] Failed resolving cmd parameters.\n");
     return 1;

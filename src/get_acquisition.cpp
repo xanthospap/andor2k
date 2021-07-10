@@ -1,7 +1,7 @@
 #include "andor2k.hpp"
 #include "atmcdLXd.h"
 
-int get_acquisition_kinetic(const CmdParameters *params) noexcept {
+int get_acquisition_kinetic(const AndorParameters *params) noexcept {
 
   int status;
   int total_images_acquired;

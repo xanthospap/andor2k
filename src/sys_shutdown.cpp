@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 constexpr int SHUTDOWN_TEMPERATURE =
     2; // shutdown temperature if needed in celsius
 
-int system_shutdown(const CmdParameters *params) noexcept {
+int system_shutdown(const AndorParameters *params) noexcept {
 
   unsigned int status;
   int current_temp;

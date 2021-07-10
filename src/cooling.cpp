@@ -7,7 +7,7 @@
 
 using namespace std::chrono_literals;
 
-int cool_to_temperature(const CmdParameters *params) noexcept {
+int cool_to_temperature(const AndorParameters *params) noexcept {
 
   unsigned int status;
   int current_temp;
