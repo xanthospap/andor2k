@@ -69,7 +69,7 @@ public:
   Socket &operator=(const Socket &) = delete;
 
   /// @brief Movying is allowed
-  Socket(Socket&&) = default;
+  Socket(Socket &&) = default;
 
   /// @brief Destructor; closes the socket's file descriptor
   ~Socket() noexcept;

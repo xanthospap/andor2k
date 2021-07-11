@@ -81,7 +81,7 @@ inline int ShutterMode2int(ShutterMode sm) noexcept {
   return static_cast<int>(sm);
 }
 
-const char *date_str(char* buf) noexcept;
+const char *date_str(char *buf) noexcept;
 
 int setup_read_out_mode(const AndorParameters *) noexcept;
 
@@ -98,6 +98,7 @@ int system_shutdown() noexcept;
 
 int print_status() noexcept;
 
-int get_next_fits_filename(const AndorParameters *params, char *fits_fn) noexcept;
+int get_next_fits_filename(const AndorParameters *params,
+                           char *fits_fn) noexcept;
 
 #endif

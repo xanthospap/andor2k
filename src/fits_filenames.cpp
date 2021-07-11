@@ -26,25 +26,26 @@ int get_next_fits_filename(const AndorParameters *params,
 std::optional<fs::path>
 make_fits_filename(const AndorParameters *params) noexcept {
 
-  char buf[32]={'\0'};
+  char buf[32] = {'\0'};
   char filename[max_fits_filename_size] = {'\0'};
   std::error_code ec;
 
   // first of all, check that the save path exists
   fs::path sdir(params->save_dir_);
   if (!fs::is_directory(sdir, ec)) {
-    fprintf(stderr, "[ERROR][%s] Path \"%s\" is not a valid directory!\n", date_str(buf),
-            params->save_dir_);
+    fprintf(stderr, "[ERROR][%s] Path \"%s\" is not a valid directory!\n",
+            date_str(buf), params->save_dir_);
     return {};
   }
 
   // format the generic file name
-  std::memset(filename, '\0', max_fits_filename_size*sizeof(char));
+  std::memset(filename, '\0', max_fits_filename_size * sizeof(char));
   std::strcpy(filename, params->image_filename_);
   std::size_t sz = std::strlen(filename);
 
   if (get_date_string_utc(filename + sz)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get current datetime!\n", date_str(buf));
+    fprintf(stderr, "[ERROR][%s] Failed to get current datetime!\n",
+            date_str(buf));
     return {};
   }
   sz += 8;
@@ -62,10 +63,12 @@ make_fits_filename(const AndorParameters *params) noexcept {
       if (end != existing_fn + sz && *end == '.') {
         if (current_count >= img_count) {
           img_count = current_count + 1;
-          printf("[DEBUG][%s] Save directory already contains an exposure of this "
-                 "set, aka \"%s\";\n", date_str(buf),
-                 existing_fn);
-          printf("[DEBUG][%s] Setting counter to %3d\n", date_str(buf), img_count);
+          printf(
+              "[DEBUG][%s] Save directory already contains an exposure of this "
+              "set, aka \"%s\";\n",
+              date_str(buf), existing_fn);
+          printf("[DEBUG][%s] Setting counter to %3d\n", date_str(buf),
+                 img_count);
         }
       }
     }
