@@ -51,7 +51,7 @@ int main() {
     chat(client_socket);
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR] Exception caught!\n");
-    fprintf(stderr, e.what());
+    // fprintf(stderr, "%s", e.what().c_str());
   }
 
   printf("All done!\n");

@@ -23,7 +23,7 @@ void chat(const ClientSocket &socket) {
     
     // get string from user
     std::memset(buffer, '\0', sizeof(buffer));
-    printf("\nEnter the string: ");
+    printf("\nEnter command: ");
     int n = 0;
     while ((buffer[n++] = getchar()) != '\n')
       ;
@@ -34,7 +34,7 @@ void chat(const ClientSocket &socket) {
     // read message from server
     std::memset(buffer, '\0', sizeof(buffer));
     socket.recv(buffer, 1024);
-    printf("\nGot string from server: \"%s\"", buffer);
+    printf("\nCommand status: %s", buffer);
     
     // if message contains "exit" then exit chat
     if (std::strncmp("exit", buffer, 4) == 0) {

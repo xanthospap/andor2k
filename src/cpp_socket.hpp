@@ -68,6 +68,9 @@ public:
   /// @brief Copy via equality operator not allowed
   Socket &operator=(const Socket &) = delete;
 
+  /// @brief Movying is allowed
+  Socket(Socket&&) = default;
+
   /// @brief Destructor; closes the socket's file descriptor
   ~Socket() noexcept;
 

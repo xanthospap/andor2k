@@ -55,7 +55,7 @@ int main() {
 
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR] Exception caught!\n");
-    fprintf(stderr, e.what());
+    // fprintf(stderr, e.what());
   }
 
   printf("All done!\n");

@@ -96,9 +96,10 @@ int print_status() noexcept {
 ///         num. In case of error, the function will return an negative
 ///         integer.
 int select_camera(int num) noexcept {
+  char buf[32]={'\0'};
   if (num < 0) {
     fprintf(stderr,
-            "[ERROR] Invalid camera index number; failed to select camera\n");
+            "[ERROR][%s] Invalid camera index number; failed to select camera\n", date_str(buf));
     return -1;
   } else if (num == 0) {
     return num;
@@ -115,7 +116,7 @@ int select_camera(int num) noexcept {
     } else {
       fprintf(
           stderr,
-          "[ERROR] Invalid camera index provided; failed to select camera\n");
+          "[ERROR][%s] Invalid camera index provided; failed to select camera\n", date_str(buf));
       return -1;
     }
   }

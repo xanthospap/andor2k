@@ -5,6 +5,7 @@
 
 int setup_acquisition_mode(const AndorParameters *params) noexcept {
   unsigned int status;
+  char buf[32] = {'\0'};
   int imode = AcquisitionMode2int(params->acquisition_mode_);
 
   switch (params->acquisition_mode_) {
@@ -72,7 +73,7 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
     break;
 
   default:
-    fprintf(stderr, "[ERROR] Acquisition Mode is not applicable!\n");
+    fprintf(stderr, "[ERROR][%s] Acquisition Mode is not applicable!\n",date_str(buf));
     status = std::numeric_limits<unsigned int>::max();
   }
 
@@ -82,20 +83,20 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
   case DRV_NOT_INITIALIZED:
     fprintf(
         stderr,
-        "[ERROR] Failed to set Acquisition Mode; system not initialized!\n");
+        "[ERROR][%s] Failed to set Acquisition Mode; system not initialized!\n",date_str(buf));
     return 1;
   case DRV_ACQUIRING:
     fprintf(
         stderr,
-        "[ERROR] Failed to set Acquisition Mode; acquisition in progress\n");
+        "[ERROR][%s] Failed to set Acquisition Mode; acquisition in progress\n",date_str(buf));
     return 2;
   case DRV_P1INVALID:
     fprintf(stderr,
-            "[ERROR] Failed to set Acquisition Mode; invalid mode parameter\n");
+            "[ERROR][%s] Failed to set Acquisition Mode; invalid mode parameter\n",date_str(buf));
     return 3;
   default:
     fprintf(stderr,
-            "[ERROR] Failed to set Acquisition Mode; undocumented error!\n");
+            "[ERROR][%s] Failed to set Acquisition Mode; undocumented error!\n",date_str(buf));
     return 5;
   }
 }

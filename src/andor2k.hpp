@@ -37,8 +37,8 @@ struct AndorParameters {
 
   char type_[16] = {'\0'};
   char initialization_dir_[128] = "/usr/local/etc/andor";
-  char image_filename_[128] = "test_image";
-  char save_dir_[256] = "/home/andor2k";
+  char image_filename_[128] = "";
+  char save_dir_[256] = "/home/andor2k/fits";
 
   /* options for read-out mode */
   ReadOutMode read_out_mode_{ReadOutMode::Image};
@@ -94,10 +94,10 @@ int cool_to_temperature(int temp_in_celsius) noexcept;
 
 int select_camera(int camera_index = 0) noexcept;
 
-int system_shutdown(const AndorParameters *) noexcept;
-
-int get_next_fits_filename(const AndorParameters *params, char *fits_fn) noexcept;
+int system_shutdown() noexcept;
 
 int print_status() noexcept;
+
+int get_next_fits_filename(const AndorParameters *params, char *fits_fn) noexcept;
 
 #endif
