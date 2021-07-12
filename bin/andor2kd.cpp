@@ -9,6 +9,7 @@
 #include <ctime>
 #include <fstream>
 #include <thread>
+#include "cppfits.hpp"
 
 using andor2k::ServerSocket;
 using andor2k::Socket;
@@ -360,8 +361,8 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
     while (status == DRV_ACQUIRING)
       GetStatus(&status);
     GetAcquiredData(imageData, xpixels * ypixels);
-    for (int i = 0; i < xpixels * ypixels; i++)
-      fout << imageData[i] << std::endl;
+    // for (int i = 0; i < xpixels * ypixels; i++)
+    //  fout << imageData[i] << std::endl;
     if (get_next_fits_filename(&aparams, fits_file)) {
       fprintf(stderr,
               "[ERROR][%s] Failed getting FITS filename! No FITS image saved\n",
@@ -369,12 +370,25 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
     }
     printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...",
            date_str(), fits_file);
-    if (SaveAsFITS(fits_file, 3) != DRV_SUCCESS) {
+    /*if (SaveAsFITS(fits_file, 3) != DRV_SUCCESS) {
       fprintf(stderr, "\n[ERROR][%s] Failed to save image to fits format!\n",
               date_str());
+    if (SaveAsFITS(fits_file, 0) != DRV_SUCCESS) {
+      fprintf(stderr, "\n[ERROR][%s] Failed to save image to fits format!\n",
+              date_str());
+    get_next_fits_filename(&aparams, fits_file);*/
+    FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
+    if ( fits.write<at_32>(imageData) ) {
+      fprintf(stderr, "[ERROR][%s] Failed writting data to FITS file!\n", date_str());
     } else {
-      printf(" done!\n");
+      printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(), fits_file);
     }
+    fits.update_key<int>("NXAXIS1", &xpixels, "width");
+    fits.update_key<int>("NXAXIS2", &ypixels, "height");
+    fits.close();
+    /*} else {
+      printf(" done!\n");
+    }*/
     delete[] imageData;
 
   } else if (aparams.acquisition_mode_ == AcquisitionMode::RunTillAbort) {
@@ -403,6 +417,7 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
    at_32 series = 0, first, last;
    at_32 *data = new at_32[xpixels*ypixels];
    GetStatus(&status);
+   auto acq_start_t = std::chrono::high_resolution_clock::now();
    while ( (status == DRV_ACQUIRING && images_remaining > 0) || buffer_images_remaining > 0 ) {
      if (images_remaining == 0) error = AbortAcquisition();
      
@@ -423,20 +438,11 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
         if (error==DRV_SUCCESS) {
           ++buffer_images_retrieved;
           get_next_fits_filename(&aparams, fits_file);
-          unsigned int ferror = SaveAsFITS(fits_file, 3);
-          switch (ferror) {
-            case DRV_SUCCESS:
-              printf("[DEBUG][%s] Imaged saved to FITS; file is %s\n", date_str(), fits_file);
-              break;
-            case DRV_P2INVALID:
-              fprintf(stderr, "[ERROR][%s] Failed saving fits; invalid mode\n", date_str());
-              break;
-            case DRV_ERROR_PAGELOCK: 
-              fprintf(stderr, "[ERROR][%s] Failed saving fits; File too large to be generated in memory\n", date_str());
-              break;
-            default:
-              fprintf(stderr, "[ERROR][%s] Failed saving fits; error code is %ud\n", date_str(), ferror);
-          }
+          FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
+          fits.write<at_32>(data);
+          fits.update_key<int>("NXAXIS1", &xpixels, "width");
+          fits.update_key<int>("NXAXIS2", &ypixels, "height");
+          fits.close();
         }
      }
 
@@ -447,6 +453,13 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
      }
 
      GetStatus(&status);
+     auto nowt = std::chrono::high_resolution_clock::now();
+     double elapsed_time_ms = std::chrono::duration<double, std::milli>(nowt-acq_start_t).count();
+     if (elapsed_time_ms > 3 * 60 * 1000) {
+       fprintf(stderr, "[ERROR][%s] Aborting acquisition cause it took too much time!\n");
+       AbortAcquisition();
+       GetStatus(&status);
+     }
    }
     /*
     at_32 *data = new at_32[xpixels * ypixels];

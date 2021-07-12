@@ -47,7 +47,8 @@ MCXXFLAGS = \
 ##
 pkginclude_HEADERS = \
         cpp_socket.hpp \
-		andor2k.hpp
+		andor2k.hpp \
+		cppfits.hpp
 
 ##
 ##  Source files (distributed).
