@@ -74,6 +74,8 @@ public:
   /// @brief Destructor; closes the socket's file descriptor
   ~Socket() noexcept;
 
+  int socket_close() { return close(m_sockid); }
+
   /// @brief Get the instances socket id, aka the socket file descriptor
   int sockid() const noexcept { return m_sockid; }
 
@@ -243,6 +245,8 @@ public:
   int recv(char *buffer, std::size_t buf_sz) const noexcept {
     return m_socket.recv(buffer, buf_sz);
   }
+
+  int close_socket() noexcept { return m_socket.socket_close(); }
 
 private:
   Socket m_socket;
