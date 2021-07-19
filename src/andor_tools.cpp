@@ -3,10 +3,15 @@
 #include <cstdio>
 #include <ctime>
 
+/// @brief Fill input buffer buf with current local datetime "%Y-%m-%d %H:%M:%S"
+/// @param[in] The input buffer to store the datetime string; must be of size 
+///            >= 32.
+/// @return A c-string holding current local datetime; this is actually the
+///         input string buf.
 const char *date_str(char *buf) noexcept {
   std::time_t now = std::time(nullptr);
-  std::tm *now_loct = ::localtime(&now);
-  std::strftime(buf, 32, "%D %T", now_loct);
+  std::tm *now_loct = std::localtime(&now);
+  std::strftime(buf, 32, "%F %T", now_loct);
   return buf;
 }
 

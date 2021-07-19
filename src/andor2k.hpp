@@ -6,6 +6,9 @@
 // const char *initialization_dir = "/usr/local/etc/andor";
 constexpr int max_fits_filename_size = 128;
 
+/// @brief Minimum temperature to reach before shut down
+constexpr int SHUTDOWN_TEMPERATURE = 2;
+
 enum class ReadOutMode : int_fast8_t {
   FullVerticalBinning = 0,
   MultiTrack = 1,
