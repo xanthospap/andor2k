@@ -16,18 +16,15 @@ int main(int argc, char *argv[]) {
 
   char fits_fn[256] = {'\0'};
 
-  for (int i = 0; i < 10; i++)
-  {
-    if (get_next_fits_filename(&params, fits_fn))
-    {
+  for (int i = 0; i < 10; i++) {
+    if (get_next_fits_filename(&params, fits_fn)) {
       fprintf(stderr, "[ERROR] Failed to get fits filename ... exiting\n");
       return 1;
     }
 
     printf("Next fits file to be saved, is \"%s\"\n", fits_fn);
     std::ofstream fout(fits_fn);
-    if (!fout.is_open())
-    {
+    if (!fout.is_open()) {
       fprintf(stderr, "[ERROR] Failed opening file \"%s\"\n", fits_fn);
       return 2;
     }
@@ -36,5 +33,5 @@ int main(int argc, char *argv[]) {
     fout.close();
   }
 
-    return 0;
-  }
+  return 0;
+}

@@ -63,7 +63,8 @@ dist_libhelmosandor2k_la_SOURCES = \
 	cooling.cpp \
 	fits_filenames.cpp \
 	sys_shutdown.cpp \
-	usage.cpp
+	usage.cpp \
+	get_acquisition.cpp
 
 #andor2k_SOURCES = andor2k.cpp
 #andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src

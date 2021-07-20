@@ -12,6 +12,26 @@ int get_date_string_utc(char *buf) noexcept;
 std::optional<fs::path>
 make_fits_filename(const AndorParameters *params) noexcept;
 
+
+/// @brief Formulate the next to-be-saved FITS filename to avoid collisions
+/// Basically, we are saving FITS files, using the convention:
+/// [GENERIC_FN][YYYYMMDD][INDEX].fits
+/// where GENERIC_FN is extracted from the parameters instance (aka the member 
+/// variable image_filename_).
+/// To avoid filename collisions/overwritting, we add an INDEX at the end of the
+/// filename, which sould be unique. This function will do exactly that:
+/// formulate a FITS filename that is unique in the params.save_dir_.
+/// It will first formulate the filename aka: [GENERIC_FN][YYYYMMDD]1.fits
+/// It will then search through the save dir and find any files named the same, 
+/// with an index equal to or grater than 1. It will then replace the index "1" 
+/// with the respective index (e.g. if we already have a filename 
+/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename 
+/// [GENERIC_FN][YYYYMMDD]7.fits) and prepend the save dir.
+/// Note that the function will formulate the whole filename (including path).
+/// @param[out] fits_fn The next-to-be-saved FITS file (including path). The 
+///            funtion will fill this string with a valid filename. Only use
+///            the string if the function returns 0.
+/// @return An integer; if other than 0, then the function failed.
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept {
   auto fits_fn_path = make_fits_filename(params);
@@ -27,6 +47,24 @@ int get_next_fits_filename(const AndorParameters *params,
   return 0;
 }
 
+/// @brief Formulate the next to-be-saved FITS filename to avoid collisions
+/// Basically, we are saving FITS files, using the convention:
+/// [GENERIC_FN][YYYYMMDD][INDEX].fits
+/// where GENERIC_FN is extracted from the parameters instance (aka the member 
+/// variable image_filename_).
+/// To avoid filename collisions/overwritting, we add an INDEX at the end of the
+/// filename, which sould be unique. This function will do exactly that:
+/// formulate a FITS filename that is unique in the params.save_dir_.
+/// It will first formulate the filename aka: [GENERIC_FN][YYYYMMDD]1.fits
+/// It will then search through the save dir and find any files named the same, 
+/// with an index equal to or grater than 1. It will then replace the index "1" 
+/// with the respective index (e.g. if we already have a filename 
+/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename 
+/// [GENERIC_FN][YYYYMMDD]7.fits) and prepend the save dir.
+/// Note that the function will return the whole filename (including path), or
+/// nothing in case something goes wrong.
+/// @return An optional fs::path; on success, it will hold the next-to-be-saved
+///         FITS filename (including path)
 std::optional<fs::path>
 make_fits_filename(const AndorParameters *params) noexcept {
 
