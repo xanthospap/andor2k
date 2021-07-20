@@ -538,6 +538,8 @@ int get_image(const char *command = buffer) noexcept {
     return 1;
   }
 
+  return 0;
+
   /*
   int xpixels, ypixels;
   if (setup_image(xpixels, ypixels, params)) {
@@ -547,8 +549,6 @@ int get_image(const char *command = buffer) noexcept {
 
   return acquire_image(params, xpixels, ypixels);
   */
-
- return 0;
 }
 
 int resolve_command(const char *command = buffer) noexcept {

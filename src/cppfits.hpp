@@ -1,7 +1,7 @@
 #ifndef __CPP_CFITSIO_ANDOR2K_H__
 #define __CPP_CFITSIO_ANDOR2K_H__
 
-#include "cfitsio/fitsio.h"
+#include "fitsio.h"
 #include <cstdint>
 
 namespace fits_details {

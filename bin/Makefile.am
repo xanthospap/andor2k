@@ -22,4 +22,4 @@ dandor2kd_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lm
 
 dandor2k_client_SOURCES = andor2k_client.cpp
 dandor2k_client_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
-dandor2k_client_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor
+dandor2k_client_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lm

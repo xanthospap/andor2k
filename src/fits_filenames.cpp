@@ -108,12 +108,12 @@ make_fits_filename(const AndorParameters *params) noexcept {
         /* set the image counter accordingly */
         if (current_count >= img_count) {
           img_count = current_count + 1;
-          printf(
+          /*printf(
               "[DEBUG][%s] Save directory already contains an exposure of this "
               "set, aka \"%s\";\n",
               date_str(buf), existing_fn);
           printf("[DEBUG][%s] Setting counter to %3d\n", date_str(buf),
-                 img_count);
+                 img_count);*/
         } /* current image counter already larger that this file's index */
       } /* failed to resolve index; do not care about this file */
     } /* filename and file in folder do not match */
