@@ -533,6 +533,12 @@ int get_image(const char *command = buffer) noexcept {
     return 1;
   }
 
+  if ( get_acquisition(&params) ) {
+    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n", date_str(now_str));
+    return 1;
+  }
+
+  /*
   int xpixels, ypixels;
   if (setup_image(xpixels, ypixels, params)) {
     fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n", date_str(now_str));
@@ -540,6 +546,9 @@ int get_image(const char *command = buffer) noexcept {
   }
 
   return acquire_image(params, xpixels, ypixels);
+  */
+
+ return 0;
 }
 
 int resolve_command(const char *command = buffer) noexcept {

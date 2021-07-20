@@ -8,7 +8,7 @@ constexpr int MAX_PIXELS_IN_DIM = 2048;
 
 int get_single_scan(const AndorParameters *params, int xpixels, int ypixels, at_32* img_buffer) noexcept;
 
-int get_acquisition(const AndorParameters *params, at_32* img_buffer) noexcept {
+int get_acquisition(const AndorParameters *params) noexcept {
   
   char buf[32] = {'\0'}; /* vuffer for datetime string */
 
@@ -36,12 +36,13 @@ int get_acquisition(const AndorParameters *params, at_32* img_buffer) noexcept {
     return 1;
   }
 
-  // long image_pixels = xnumpixels * ynumpixels;
-
   if (setup_acquisition_mode(params)) {
     fprintf(stderr, "[ERROR][%s] Failed setting up acquisition mode! (traceback: %s)", date_str(buf), __func__);
     return 1;
   }
+
+  long image_pixels = xnumpixels * ynumpixels;
+  at_32 *img_buffer = new at_32[image_pixels];
 
   int acq_status = 0;
   if (params->acquisition_mode_ == AcquisitionMode::SingleScan) {
@@ -50,10 +51,11 @@ int get_acquisition(const AndorParameters *params, at_32* img_buffer) noexcept {
 
   if (acq_status) {
     fprintf(stderr, "[ERROR][%s] Failed acquiring image! (traceback: %s)", date_str(buf), __func__);
-    return 1;
   }
 
-  return 0;
+  delete[] img_buffer;
+
+  return acq_status;
 }
 
 int get_single_scan(const AndorParameters *params, int xpixels, int ypixels, at_32* img_buffer) noexcept {
