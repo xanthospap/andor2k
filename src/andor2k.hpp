@@ -3,11 +3,22 @@
 
 #include <cstdint>
 
-// const char *initialization_dir = "/usr/local/etc/andor";
-constexpr int max_fits_filename_size = 128;
+// @brief Max chars for any fits filename (excluding path)
+constexpr int MAX_FITS_FILENAME_SIZE = 128;
+
+// @brief Max chars for any fits file (including path)
+constexpr int MAX_FITS_FILE_SIZE = 256;
 
 /// @brief Minimum temperature to reach before shut down
 constexpr int SHUTDOWN_TEMPERATURE = 2;
+
+/// @brief Max minutes to wait for when shuting down camera (to reach shutdown
+///        temperature).
+constexpr int MAX_SHUTDOWN_DURATION = 30;
+
+/// @brief Max minutes to wait for when cooling down camera (to reach given
+///        temperature).
+constexpr int MAX_COOLING_DURATION = 30;
 
 enum class ReadOutMode : int_fast8_t {
   FullVerticalBinning = 0,
@@ -40,8 +51,8 @@ struct AndorParameters {
 
   char type_[16] = {'\0'};
   char initialization_dir_[128] = "/usr/local/etc/andor";
-  char image_filename_[128] = "";
-  char save_dir_[256] = "/home/andor2k/fits";
+  char image_filename_[MAX_FITS_FILENAME_SIZE] = "";
+  char save_dir_[128] = "/home/andor2k/fits";
 
   /* options for read-out mode */
   ReadOutMode read_out_mode_{ReadOutMode::Image};

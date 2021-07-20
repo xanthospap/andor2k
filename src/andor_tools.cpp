@@ -4,7 +4,7 @@
 #include <ctime>
 
 /// @brief Fill input buffer buf with current local datetime "%Y-%m-%d %H:%M:%S"
-/// @param[in] The input buffer to store the datetime string; must be of size 
+/// @param[in] The input buffer to store the datetime string; must be of size
 ///            >= 32.
 /// @return A c-string holding current local datetime; this is actually the
 ///         input string buf.

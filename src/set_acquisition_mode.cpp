@@ -6,9 +6,9 @@
 /// @bief Set AcquisitionMode for Andor2k camera
 /// @see USER’S GUIDE TO SDK, Software Version 2.102
 ///
-/// This function will set the Acquisition Mode in the ANDOR2K camera. The 
+/// This function will set the Acquisition Mode in the ANDOR2K camera. The
 /// Acquisition Mode to set, will be read off from the input params instance.
-/// All other parameters needed to setup the AcquisitionMode (e.g. exposure 
+/// All other parameters needed to setup the AcquisitionMode (e.g. exposure
 /// time), will also be read off from the params input instance.
 ///
 /// Possible acquistion modes, are:
@@ -42,14 +42,14 @@
 ///         other than 0, denotes an error and a corresponding error message
 ///         will be written to stderr.
 int setup_acquisition_mode(const AndorParameters *params) noexcept {
-  
+
   unsigned int status;
   char buf[32] = {'\0'}; /* buffer to hold datetime string for reporting */
   int imode = AcquisitionMode2int(params->acquisition_mode_);
   printf("[DEBUG][%s] Setting AcquisitionMode to %1d\n", date_str(buf), imode);
 
   switch (params->acquisition_mode_) {
-  
+
   /// SinlgeScan
   case AcquisitionMode::SingleScan:
     status = SetAcquisitionMode(imode);
@@ -117,7 +117,8 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
     break;
 
   default:
-    fprintf(stderr, "[ERROR][%s] Acquisition Mode is not applicable! (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Acquisition Mode is not applicable! (traceback: %s)\n",
             date_str(buf), __func__);
     status = std::numeric_limits<unsigned int>::max();
   } /* done setting parameters */
@@ -126,31 +127,32 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
   switch (status) {
   case DRV_SUCCESS:
     return 0;
-  
+
   case DRV_NOT_INITIALIZED:
-    fprintf(
-        stderr,
-        "[ERROR][%s] Failed to set Acquisition Mode; system not initialized! (traceback: %s)\n",
-        date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to set Acquisition Mode; system not "
+            "initialized! (traceback: %s)\n",
+            date_str(buf), __func__);
     return 1;
-  
+
   case DRV_ACQUIRING:
-    fprintf(
-        stderr,
-        "[ERROR][%s] Failed to set Acquisition Mode; acquisition in progress (traceback: %s)\n",
-        date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to set Acquisition Mode; acquisition in "
+            "progress (traceback: %s)\n",
+            date_str(buf), __func__);
     return 2;
-  
+
   case DRV_P1INVALID:
-    fprintf(
-        stderr,
-        "[ERROR][%s] Failed to set Acquisition Mode; invalid mode parameter (traceback: %s)\n",
-        date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to set Acquisition Mode; invalid mode "
+            "parameter (traceback: %s)\n",
+            date_str(buf), __func__);
     return 3;
-  
+
   default:
     fprintf(stderr,
-            "[ERROR][%s] Failed to set Acquisition Mode; undocumented error! (traceback: %s)\n",
+            "[ERROR][%s] Failed to set Acquisition Mode; undocumented error! "
+            "(traceback: %s)\n",
             date_str(buf), __func__);
     return 5;
   }

@@ -15,14 +15,14 @@ using andor2k::ServerSocket;
 using andor2k::Socket;
 using namespace std::chrono_literals;
 
-/* ANDOR2K REALTED CONSTANTS */
+/* ANDOR2K RELATED CONSTANTS */
 constexpr int ANDOR_MIN_TEMP = -120;
 constexpr int ANDOR_MAX_TEMP = 10;
 
 /* buffers and constants */
 constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
-char fits_file[256] = {'\0'};
+char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char buffer[1024];         // used by sockets to communicate with client
 AndorParameters params;

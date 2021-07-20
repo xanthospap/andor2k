@@ -28,14 +28,14 @@
 ///         other than 0, denotes an error and a corresponding error message
 ///         will be written to stderr.
 int setup_read_out_mode(const AndorParameters *params) noexcept {
-  
+
   char buf[32] = {'\0'}; /* buffer to store datetime string */
   unsigned int status;
   int irom = ReadOutMode2int(params->read_out_mode_);
   printf("[DEBUG][%s] Setting ReadOutMode to %1d\n", date_str(buf), irom);
 
   switch (params->read_out_mode_) {
-  
+
   /* Full Vertical Binning */
   case ReadOutMode::FullVerticalBinning:
     status = SetReadMode(irom);
@@ -91,66 +91,72 @@ int setup_read_out_mode(const AndorParameters *params) noexcept {
     break;
 
   default:
-    fprintf(stderr, "[ERROR][%s] No valid ReadOut Mode was specified! (traceback: %s)\n",
-            date_str(buf), __func__);
+    fprintf(
+        stderr,
+        "[ERROR][%s] No valid ReadOut Mode was specified! (traceback: %s)\n",
+        date_str(buf), __func__);
     status = std::numeric_limits<unsigned int>::max();
   } /* done setting up read out parameters */
 
   /* check status of parameter setting; report errors */
   auto retcode = status;
   switch (status) {
-  
+
   case DRV_SUCCESS:
     retcode = 0;
     break;
-  
+
   case DRV_NOT_INITIALIZED:
     fprintf(stderr,
-            "[ERROR][%s] Failed to set Read Mode; system not initialized! (traceback: %s)\n",
+            "[ERROR][%s] Failed to set Read Mode; system not initialized! "
+            "(traceback: %s)\n",
             date_str(buf), __func__);
     retcode = 1;
     break;
-  
+
   case DRV_ACQUIRING:
     fprintf(stderr,
-            "[ERROR][%s] Failed to set Read Mode; acquisition in progress! (traceback: %s)\n",
+            "[ERROR][%s] Failed to set Read Mode; acquisition in progress! "
+            "(traceback: %s)\n",
             date_str(buf), __func__);
     retcode = 2;
     break;
-  
+
   case DRV_P1INVALID:
     if (params->read_out_mode_ == ReadOutMode::FullVerticalBinning) {
-      fprintf(
-          stderr,
-          "[ERROR][%s] Failed to set Read mode; invalid ReadOutMode given! (traceback: %s)\n",
-          date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to set Read mode; invalid ReadOutMode given! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
     } else if (params->read_out_mode_ == ReadOutMode::SingleTrack) {
       fprintf(stderr,
-              "[ERROR][%s] Failed to set Read Mode; center row invalid! (traceback: %s)\n",
+              "[ERROR][%s] Failed to set Read Mode; center row invalid! "
+              "(traceback: %s)\n",
               date_str(buf), __func__);
     } else if (params->read_out_mode_ == ReadOutMode::Image) {
-      fprintf(
-          stderr,
-          "[ERROR][%s] Failed to set Read Mode; binning parameter invalid! (traceback: %s)\n",
-          date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to set Read Mode; binning parameter invalid! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
     }
     retcode = 3;
     break;
-  
+
   case DRV_P2INVALID:
     if (params->read_out_mode_ == ReadOutMode::SingleTrack) {
       fprintf(stderr,
-              "[ERROR][%s] Failed to set Read Mode; Track height invalid! (traceback: %s)\n",
+              "[ERROR][%s] Failed to set Read Mode; Track height invalid! "
+              "(traceback: %s)\n",
               date_str(buf), __func__);
     } else if (params->read_out_mode_ == ReadOutMode::Image) {
-      fprintf(
-          stderr,
-          "[ERROR][%s] Failed to set Read Mode; binning parameter invalid! (traceback: %s)\n",
-          date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to set Read Mode; binning parameter invalid! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
     }
     retcode = 4;
     break;
-  
+
   case DRV_P3INVALID:
     [[fallthrough]];
   case DRV_P4INVALID:
@@ -164,10 +170,11 @@ int setup_read_out_mode(const AndorParameters *params) noexcept {
             date_str(buf), __func__);
     retcode = 6;
     break;
-  
+
   default:
     fprintf(stderr,
-            "[ERROR][%s] Failed to set Read mode; undocumented error! (traceback: %s)\n",
+            "[ERROR][%s] Failed to set Read mode; undocumented error! "
+            "(traceback: %s)\n",
             date_str(buf), __func__);
     retcode = 10;
   }
