@@ -12,23 +12,22 @@ int get_date_string_utc(char *buf) noexcept;
 std::optional<fs::path>
 make_fits_filename(const AndorParameters *params) noexcept;
 
-
 /// @brief Formulate the next to-be-saved FITS filename to avoid collisions
 /// Basically, we are saving FITS files, using the convention:
 /// [GENERIC_FN][YYYYMMDD][INDEX].fits
-/// where GENERIC_FN is extracted from the parameters instance (aka the member 
+/// where GENERIC_FN is extracted from the parameters instance (aka the member
 /// variable image_filename_).
 /// To avoid filename collisions/overwritting, we add an INDEX at the end of the
 /// filename, which sould be unique. This function will do exactly that:
 /// formulate a FITS filename that is unique in the params.save_dir_.
 /// It will first formulate the filename aka: [GENERIC_FN][YYYYMMDD]1.fits
-/// It will then search through the save dir and find any files named the same, 
-/// with an index equal to or grater than 1. It will then replace the index "1" 
-/// with the respective index (e.g. if we already have a filename 
-/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename 
+/// It will then search through the save dir and find any files named the same,
+/// with an index equal to or grater than 1. It will then replace the index "1"
+/// with the respective index (e.g. if we already have a filename
+/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename
 /// [GENERIC_FN][YYYYMMDD]7.fits) and prepend the save dir.
 /// Note that the function will formulate the whole filename (including path).
-/// @param[out] fits_fn The next-to-be-saved FITS file (including path). The 
+/// @param[out] fits_fn The next-to-be-saved FITS file (including path). The
 ///            funtion will fill this string with a valid filename. Only use
 ///            the string if the function returns 0.
 /// @return An integer; if other than 0, then the function failed.
@@ -40,7 +39,9 @@ int get_next_fits_filename(const AndorParameters *params,
     std::strcpy(fits_fn, fits_fn_path.value().string().c_str());
   } else {
     char buf[32] = {'\0'}; /* buffer for datetime string */
-    fprintf(stderr, "[ERROR][%s] Failed to formulate a valid FITS filename (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Failed to formulate a valid FITS filename (traceback: "
+            "%s)\n",
             date_str(buf), __func__);
     return 1;
   }
@@ -50,16 +51,16 @@ int get_next_fits_filename(const AndorParameters *params,
 /// @brief Formulate the next to-be-saved FITS filename to avoid collisions
 /// Basically, we are saving FITS files, using the convention:
 /// [GENERIC_FN][YYYYMMDD][INDEX].fits
-/// where GENERIC_FN is extracted from the parameters instance (aka the member 
+/// where GENERIC_FN is extracted from the parameters instance (aka the member
 /// variable image_filename_).
 /// To avoid filename collisions/overwritting, we add an INDEX at the end of the
 /// filename, which sould be unique. This function will do exactly that:
 /// formulate a FITS filename that is unique in the params.save_dir_.
 /// It will first formulate the filename aka: [GENERIC_FN][YYYYMMDD]1.fits
-/// It will then search through the save dir and find any files named the same, 
-/// with an index equal to or grater than 1. It will then replace the index "1" 
-/// with the respective index (e.g. if we already have a filename 
-/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename 
+/// It will then search through the save dir and find any files named the same,
+/// with an index equal to or grater than 1. It will then replace the index "1"
+/// with the respective index (e.g. if we already have a filename
+/// [GENERIC_FN][YYYYMMDD]6.fits, it will return the filename
 /// [GENERIC_FN][YYYYMMDD]7.fits) and prepend the save dir.
 /// Note that the function will return the whole filename (including path), or
 /// nothing in case something goes wrong.
@@ -75,8 +76,10 @@ make_fits_filename(const AndorParameters *params) noexcept {
   /* first of all, check that the save path exists */
   fs::path sdir(params->save_dir_);
   if (!fs::is_directory(sdir, ec)) {
-    fprintf(stderr, "[ERROR][%s] Path \"%s\" is not a valid directory! (traceback: %s)\n",
-            date_str(buf), params->save_dir_, __func__);
+    fprintf(
+        stderr,
+        "[ERROR][%s] Path \"%s\" is not a valid directory! (traceback: %s)\n",
+        date_str(buf), params->save_dir_, __func__);
     return {};
   }
 
@@ -84,7 +87,8 @@ make_fits_filename(const AndorParameters *params) noexcept {
   std::strcpy(filename, params->image_filename_);
   std::size_t sz = std::strlen(filename);
   if (get_date_string_utc(filename + sz)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get current datetime! (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Failed to get current datetime! (traceback: %s)\n",
             date_str(buf), __func__);
     return {};
   }
@@ -115,9 +119,9 @@ make_fits_filename(const AndorParameters *params) noexcept {
           printf("[DEBUG][%s] Setting counter to %3d\n", date_str(buf),
                  img_count);*/
         } /* current image counter already larger that this file's index */
-      } /* failed to resolve index; do not care about this file */
-    } /* filename and file in folder do not match */
-  }/* end looping through files */
+      }   /* failed to resolve index; do not care about this file */
+    }     /* filename and file in folder do not match */
+  }       /* end looping through files */
 
   /* add image counter and extension to filename */
   std::sprintf(filename + sz, "%d", img_count);
@@ -134,7 +138,8 @@ int get_date_string_utc(char *buf) noexcept {
   std::time_t now = std::time(nullptr);
   std::tm *now_utc = ::gmtime(&now);
   if (!now_utc) {
-    fprintf(stderr, "[ERROR][%s] Failed to get current datetime! (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Failed to get current datetime! (traceback: %s)\n",
             date_str(buf), __func__);
     return 1;
   }

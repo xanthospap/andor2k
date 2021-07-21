@@ -1,6 +1,8 @@
 #include "andor2k.hpp"
 #include "atmcdLXd.h"
+#include "andor2kd.hpp"
 #include "cpp_socket.hpp"
+#include "cppfits.hpp"
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -9,7 +11,6 @@
 #include <ctime>
 #include <fstream>
 #include <thread>
-#include "cppfits.hpp"
 
 using andor2k::ServerSocket;
 using andor2k::Socket;
@@ -23,10 +24,13 @@ constexpr int ANDOR_MAX_TEMP = 10;
 constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
-char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
-char buffer[1024];         // used by sockets to communicate with client
+char now_str[32] = {'\0'}; /* YYYY-MM-DD HH:MM:SS */
+char buffer[1024];         /* used by sockets to communicate with client */
+
+/* ANDOR2K parameters controlling usage */
 AndorParameters params;
 
+/// @brief Signal handler to kill daemon
 void kill_daemon(int sig) noexcept {
   printf("[DEBUG][%s] Caught signal (#%d); shutting down daemon\n",
          date_str(now_str), sig);
@@ -35,6 +39,7 @@ void kill_daemon(int sig) noexcept {
   exit(sig);
 }
 
+/// @brief Set ANDOR2K temperature
 int set_temperature(const char *command = buffer) noexcept {
   if (std::strncmp(command, "settemp", 7))
     return 1;
@@ -94,7 +99,8 @@ int resolve_image_parameters(const char *command = buffer,
       if (aparams.num_images_ > 1) {
         // aparams.acquisition_mode_ = AcquisitionMode::KineticSeries;
         aparams.acquisition_mode_ = AcquisitionMode::RunTillAbort;
-        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n", date_str(now_str),
+        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n",
+               date_str(now_str),
                AcquisitionMode2int(aparams.acquisition_mode_));
       }
 
@@ -181,9 +187,9 @@ int resolve_image_parameters(const char *command = buffer,
       }
     } else if (!std::strncmp(token, "--vstart", 8)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Must provide a numeric argument to \"--vstart\"\n", date_str(now_str));
+        fprintf(stderr,
+                "[ERROR][%s] Must provide a numeric argument to \"--vstart\"\n",
+                date_str(now_str));
         return 1;
       }
       aparams.image_vstart_ = std::strtol(token, &end, 10);
@@ -221,11 +227,12 @@ int resolve_image_parameters(const char *command = buffer,
         return 1;
       }
       if (std::strlen(token) >= 128) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n", date_str(now_str),
-                token);
+        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n",
+                date_str(now_str), token);
         return 1;
       }
-      std::memcpy(aparams.image_filename_, token, std::strlen(token));
+      std::memset(aparams.image_filename_, '\0', MAX_FITS_FILE_SIZE);
+      std::strcpy(aparams.image_filename_, token);
 
     } else if (!std::strncmp(token, "--type", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
@@ -235,8 +242,8 @@ int resolve_image_parameters(const char *command = buffer,
         return 1;
       }
       if (std::strlen(token) > 15) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n", date_str(now_str),
-                token);
+        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n",
+                date_str(now_str), token);
         return 1;
       }
       std::memcpy(aparams.type_, token, std::strlen(token));
@@ -309,8 +316,8 @@ int setup_image(int &xpixels, int &ypixels,
             date_str(now_str));
     return 10;
   }
-  printf("[DEBUG][%s] Detector dimensions: %5dx%5d (in pixels)\n", date_str(now_str),
-         xpixels, ypixels);
+  printf("[DEBUG][%s] Detector dimensions: %5dx%5d (in pixels)\n",
+         date_str(now_str), xpixels, ypixels);
   printf("[DEBUG][%s] Computed values are:\n", date_str(now_str));
   int width = aparams.image_hend_ - aparams.image_hstart_ + 1,
       height = aparams.image_vend_ - aparams.image_vstart_ + 1;
@@ -345,7 +352,7 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(now_str));
   StartAcquisition();
   int status;
-  
+
   if (aparams.acquisition_mode_ == AcquisitionMode::SingleScan) {
     at_32 *imageData = new at_32[xpixels * ypixels];
     std::fstream fout("image.txt", std::ios::out);
@@ -371,10 +378,12 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
               date_str());
     get_next_fits_filename(&aparams, fits_file);*/
     FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
-    if ( fits.write<at_32>(imageData) ) {
-      fprintf(stderr, "[ERROR][%s] Failed writting data to FITS file!\n", date_str(now_str));
+    if (fits.write<at_32>(imageData)) {
+      fprintf(stderr, "[ERROR][%s] Failed writting data to FITS file!\n",
+              date_str(now_str));
     } else {
-      printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(now_str), fits_file);
+      printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(now_str),
+             fits_file);
     }
     fits.update_key<int>("NXAXIS1", &xpixels, "width");
     fits.update_key<int>("NXAXIS2", &ypixels, "height");
@@ -403,32 +412,36 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
     delete[] data;
     printf("--> Acquisition Aborted\n");
     */
-   unsigned int error;
-   int images_remaining = aparams.num_images_;
-   int buffer_images_remaining = 0;
-   int buffer_images_retrieved = 0;
-   at_32 series = 0, first, last;
-   at_32 *data = new at_32[xpixels*ypixels];
-   GetStatus(&status);
-   auto acq_start_t = std::chrono::high_resolution_clock::now();
-   while ( (status == DRV_ACQUIRING && images_remaining > 0) || buffer_images_remaining > 0 ) {
-     if (images_remaining == 0) error = AbortAcquisition();
-     
-     GetTotalNumberImagesAcquired(&series);
+    unsigned int error;
+    int images_remaining = aparams.num_images_;
+    int buffer_images_remaining = 0;
+    int buffer_images_retrieved = 0;
+    at_32 series = 0, first, last;
+    at_32 *data = new at_32[xpixels * ypixels];
+    GetStatus(&status);
+    auto acq_start_t = std::chrono::high_resolution_clock::now();
+    while ((status == DRV_ACQUIRING && images_remaining > 0) ||
+           buffer_images_remaining > 0) {
+      if (images_remaining == 0)
+        error = AbortAcquisition();
 
-     if (GetNumberNewImages(&first, &last) == DRV_SUCCESS) {
+      GetTotalNumberImagesAcquired(&series);
+
+      if (GetNumberNewImages(&first, &last) == DRV_SUCCESS) {
         buffer_images_remaining = last - first;
         images_remaining = aparams.num_images_ - series;
 
-        error = GetOldestImage(data, xpixels*ypixels);
+        error = GetOldestImage(data, xpixels * ypixels);
 
         if (error == DRV_P2INVALID || error == DRV_P1INVALID) {
-          fprintf(stderr, "[ERROR][%s] Acquisition error, nr #%s\n", date_str(now_str), error);
-          fprintf(stderr, "[ERROR][%s] Aborting acquisition.\n", date_str(now_str));
+          fprintf(stderr, "[ERROR][%s] Acquisition error, nr #%s\n",
+                  date_str(now_str), error);
+          fprintf(stderr, "[ERROR][%s] Aborting acquisition.\n",
+                  date_str(now_str));
           AbortAcquisition();
         }
 
-        if (error==DRV_SUCCESS) {
+        if (error == DRV_SUCCESS) {
           ++buffer_images_retrieved;
           get_next_fits_filename(&aparams, fits_file);
           FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
@@ -437,23 +450,28 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
           fits.update_key<int>("NXAXIS2", &ypixels, "height");
           fits.close();
         }
-     }
+      }
 
-     // abort after full number of images taken
-     if (series >= aparams.num_images_) {
-      printf("[DEBUG][%s] Succesefully acquired all images\n", date_str(now_str));
-      AbortAcquisition();   
-     }
+      // abort after full number of images taken
+      if (series >= aparams.num_images_) {
+        printf("[DEBUG][%s] Succesefully acquired all images\n",
+               date_str(now_str));
+        AbortAcquisition();
+      }
 
-     GetStatus(&status);
-     auto nowt = std::chrono::high_resolution_clock::now();
-     double elapsed_time_ms = std::chrono::duration<double, std::milli>(nowt-acq_start_t).count();
-     if (elapsed_time_ms > 3 * 60 * 1000) {
-       fprintf(stderr, "[ERROR][%s] Aborting acquisition cause it took too much time!\n", date_str(now_str));
-       AbortAcquisition();
-       GetStatus(&status);
-     }
-   }
+      GetStatus(&status);
+      auto nowt = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(nowt - acq_start_t).count();
+      if (elapsed_time_ms > 3 * 60 * 1000) {
+        fprintf(
+            stderr,
+            "[ERROR][%s] Aborting acquisition cause it took too much time!\n",
+            date_str(now_str));
+        AbortAcquisition();
+        GetStatus(&status);
+      }
+    }
     /*
     at_32 *data = new at_32[xpixels * ypixels];
     int images_acquired = 0;
@@ -461,10 +479,9 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
     auto sleep_ms = std::chrono::milliseconds(
         static_cast<int>(std::ceil(aparams.exposure_ + 0.5)) * 2000);
     std::this_thread::sleep_for(sleep_ms);
-    while ((images_acquired < aparams.num_images_) && !abort) {                 // ----------------------------------->
-      unsigned int error = GetOldestImage(data, xpixels * ypixels);
-      switch (error) {
-      case DRV_SUCCESS:
+    while ((images_acquired < aparams.num_images_) && !abort) { //
+    -----------------------------------> unsigned int error =
+    GetOldestImage(data, xpixels * ypixels); switch (error) { case DRV_SUCCESS:
         ++images_acquired;
         printf("[DEBUG][%s] Acquired image nr %2d/%2d\n", date_str(),
                images_acquired, aparams.num_images_);
@@ -518,8 +535,7 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
         printf("[DEBUG][%s] No new data yet ... waiting ...\n", date_str());
         std::this_thread::sleep_for(sleep_ms);
       }
-    }                                                                            // <-----------------------------------
-    delete[] data;
+    } // <----------------------------------- delete[] data;
     */
   }
   /* ------------------------------------------------------------ ACQUISITION */
@@ -529,12 +545,14 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
 
 int get_image(const char *command = buffer) noexcept {
   if (resolve_image_parameters(command, params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n", date_str(now_str));
+    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
+            date_str(now_str));
     return 1;
   }
 
-  if ( get_acquisition(&params) ) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n", date_str(now_str));
+  if (get_acquisition(&params)) {
+    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
+            date_str(now_str));
     return 1;
   }
 
@@ -543,8 +561,8 @@ int get_image(const char *command = buffer) noexcept {
   /*
   int xpixels, ypixels;
   if (setup_image(xpixels, ypixels, params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n", date_str(now_str));
-    return 1;
+    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
+  date_str(now_str)); return 1;
   }
 
   return acquire_image(params, xpixels, ypixels);
@@ -618,18 +636,21 @@ int main() {
 
   // select the camera
   if (select_camera(params.camera_num_) < 0) {
-    fprintf(stderr, "[FATAL][%s] Failed to select camera...exiting\n", date_str(now_str));
+    fprintf(stderr, "[FATAL][%s] Failed to select camera...exiting\n",
+            date_str(now_str));
     return 10;
   }
 
   /* report daemon initialization */
-  printf("[DEBUG][%s] Initializing ANDOR2K daemon service\n", date_str(now_str));
+  printf("[DEBUG][%s] Initializing ANDOR2K daemon service\n",
+         date_str(now_str));
 
   // initialize CCD
   printf("[DEBUG][%s] Initializing CCD ....", date_str(now_str));
   error = Initialize(params.initialization_dir_);
   if (error != DRV_SUCCESS) {
-    fprintf(stderr, "[FATAL][%s] Initialisation error...exiting\n", date_str(now_str));
+    fprintf(stderr, "[FATAL][%s] Initialisation error...exiting\n",
+            date_str(now_str));
     return 10;
   }
   // allow initialization ... go to sleep for two seconds
@@ -646,7 +667,8 @@ int main() {
   try {
     ServerSocket server_sock(SOCKET_PORT);
 
-    printf("[DEBUG][%s] Listening on port %d\n", date_str(now_str), SOCKET_PORT);
+    printf("[DEBUG][%s] Listening on port %d\n", date_str(now_str),
+           SOCKET_PORT);
     printf("[DEBUG][%s] Service is up and running ... waiting for input\n",
            date_str(now_str));
 

@@ -1,8 +1,9 @@
 #ifndef __CPP_CFITSIO_ANDOR2K_H__
 #define __CPP_CFITSIO_ANDOR2K_H__
 
-#include "fitsio.h"
+#include "cfitsio/fitsio.h"
 #include <cstdint>
+#include <cstring>
 
 namespace fits_details {
 constexpr int ANDOR2K_MAX_XPIXELS = 2048;
@@ -13,37 +14,37 @@ template <typename T> struct cfitsio_bitpix {};
 template <> struct cfitsio_bitpix<int8_t> {
   static constexpr int bitpix = 8;
   static constexpr int bscale = 1;
-  //static constexpr int8_t bzero = -128;
+  // static constexpr int8_t bzero = -128;
 };
 template <> struct cfitsio_bitpix<uint16_t> {
   static constexpr int bitpix = 16;
   static constexpr int bscale = 1;
-  //static constexpr uint16_t bzero = 32768;
+  // static constexpr uint16_t bzero = 32768;
 };
 template <> struct cfitsio_bitpix<int16_t> {
   static constexpr int bitpix = 16;
   static constexpr int bscale = 1;
-  //static constexpr int16_t bzero = 32768;
+  // static constexpr int16_t bzero = 32768;
 };
 template <> struct cfitsio_bitpix<uint32_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  //static constexpr uint32_t bzero = 2147483648;
+  // static constexpr uint32_t bzero = 2147483648;
 };
 template <> struct cfitsio_bitpix<int32_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  //static constexpr int32_t bzero = 2147483648;
+  // static constexpr int32_t bzero = 2147483648;
 };
 template <> struct cfitsio_bitpix<uint64_t> {
   static constexpr int bitpix = 64;
   static constexpr int bscale = 1;
-  //static constexpr uint64_t bzero = 9223372036854775808;
+  // static constexpr uint64_t bzero = 9223372036854775808;
 };
 template <> struct cfitsio_bitpix<int64_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  //static constexpr int64_t bzero = 2147483648;
+  // static constexpr int64_t bzero = 2147483648;
 };
 template <typename T> struct cfitsio_type {};
 template <> struct cfitsio_type<signed short> {
@@ -83,6 +84,7 @@ private:
 public:
   FitsImage(const char *fn, int width, int height) noexcept
       : xpixels(width), ypixels(height) {
+    std::memset(filename, '\0', 256);
     std::strcpy(filename, fn);
     int status = 0;
     if (fits_create_file(&fptr, filename, &status))

@@ -20,6 +20,9 @@ constexpr int MAX_SHUTDOWN_DURATION = 30;
 ///        temperature).
 constexpr int MAX_COOLING_DURATION = 30;
 
+/// @brief Max pixels in width/height
+constexpr int MAX_PIXELS_IN_DIM = 2048;
+
 enum class ReadOutMode : int_fast8_t {
   FullVerticalBinning = 0,
   MultiTrack = 1,
@@ -59,8 +62,8 @@ struct AndorParameters {
   // Single Track Mode
   int singe_track_center_{1}, single_track_height_{1};
   // Image Mode
-  int image_hbin_{1}, image_vbin_{1}, image_hstart_{1}, image_hend_{2048},
-      image_vstart_{1}, image_vend_{2048};
+  int image_hbin_{1}, image_vbin_{1}, image_hstart_{1}, image_hend_{MAX_PIXELS_IN_DIM},
+      image_vstart_{1}, image_vend_{MAX_PIXELS_IN_DIM};
 
   /* options for acquisition mode */
   AcquisitionMode acquisition_mode_{AcquisitionMode::SingleScan};

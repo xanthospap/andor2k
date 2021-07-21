@@ -16,90 +16,98 @@ const char *date_str(char *buf) noexcept {
 }
 
 int print_status() noexcept {
-  char buf[32] = {'\0'};
+  char buf[32] = {'\0'}; /* buffer for datetime string */
   int status;
 
+  /* get status */
   if (GetStatus(&status) != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR][%s] Failed to get camera status!\n",
-            date_str(buf));
+    fprintf(stderr, "[ERROR][%s] Failed to get camera status! (traceback: %s)\n",
+            date_str(buf), __func__);
     return 1;
   }
+
+  /* report status */
+  printf("[DEBUG][%s] Status report for ANDOR2K:\n", date_str(buf));
 
   date_str(buf);
   switch (status) {
   case DRV_IDLE:
-    printf("[STATUS][%s] IDLE; waiting for instructions\n", buf);
+    printf("[DEBUG][%s] IDLE; waiting for instructions\n", buf);
     break;
   case DRV_TEMPCYCLE:
-    printf("[STATUS][%s] Executing temperature cycle\n", buf);
+    printf("[DEBUG][%s] Executing temperature cycle\n", buf);
     break;
   case DRV_ACQUIRING:
-    printf("[STATUS][%s] Acquisition in progress\n", buf);
+    printf("[DEBUG][%s] Acquisition in progress\n", buf);
     break;
   case DRV_ACCUM_TIME_NOT_MET:
-    printf("[STATUS][%s] Unable to meet Accumulate cycle time\n", buf);
+    printf("[DEBUG][%s] Unable to meet Accumulate cycle time\n", buf);
     break;
   case DRV_KINETIC_TIME_NOT_MET:
-    printf("[STATUS][%s] Unable to meet Kinetic cycle time\n", buf);
+    printf("[DEBUG][%s] Unable to meet Kinetic cycle time\n", buf);
     break;
   case DRV_ERROR_ACK:
-    printf("[STATUS][%s] Unable to communicate with card\n", buf);
+    printf("[DEBUG][%s] Unable to communicate with card\n", buf);
     break;
   case DRV_ACQ_BUFFER:
-    printf("[STATUS][%s] Computer unable to read the data via the ISA slot at "
+    printf("[DEBUG][%s] Computer unable to read the data via the ISA slot at "
            "the required rate\n",
            buf);
     break;
   case DRV_ACQ_DOWNFIFO_FULL:
-    printf("[STATUS][%s] Computer unable to read data fast enough to stop "
+    printf("[DEBUG][%s] Computer unable to read data fast enough to stop "
            "camera memory going full\n",
            buf);
     break;
   case DRV_SPOOLERROR:
-    printf("[STATUS][%s] Overflow of the spool buffer\n", buf);
+    printf("[DEBUG][%s] Overflow of the spool buffer\n", buf);
     break;
   }
 
+  /* get and report temperature */
   unsigned int error;
   int ctemp;
   date_str(buf);
   error = GetTemperature(&ctemp);
   switch (error) {
   case DRV_NOT_INITIALIZED:
-    fprintf(stderr, "[STATUS][%s] Temp: %+4dC: System not initialized!\n", buf,
+    fprintf(stderr, "[DEBUG][%s] Temp: %+4dC: System not initialized!\n", buf,
             ctemp);
     return 1;
   case DRV_ACQUIRING:
-    fprintf(stderr, "[STATUS][%s] Temp: %+4dC: Acquisition in progress\n", buf,
+    fprintf(stderr, "[DEBUG][%s] Temp: %+4dC: Acquisition in progress\n", buf,
             ctemp);
     return 2;
   case DRV_ERROR_ACK:
     fprintf(stderr,
-            "[STATUS][%s] Temp: %+4dC: Unable to communicate with card\n", buf,
+            "[DEBUG][%s] Temp: %+4dC: Unable to communicate with card\n", buf,
             ctemp);
     return 3;
   case DRV_TEMP_OFF:
-    printf("[STATUS][%s] Temp: %+4dC: Temperature is off\n", buf, ctemp);
+    printf("[DEBUG][%s] Temp: %+4dC: Temperature is off\n", buf, ctemp);
     break;
   case DRV_TEMP_NOT_REACHED:
-    printf("[STATUS][%s] Temp: %+4dC: Temperature has not reached set point\n",
+    printf("[DEBUG][%s] Temp: %+4dC: Temperature has not reached set point\n",
            buf, ctemp);
     break;
   case DRV_TEMP_DRIFT:
-    printf("[STATUS][%s] Temp: %+4dC: Temperature had stabilised but has since "
+    printf("[DEBUG][%s] Temp: %+4dC: Temperature had stabilised but has since "
            "drifted\n",
            buf, ctemp);
     break;
   case DRV_TEMP_NOT_STABILIZED:
-    printf("[STATUS][%s] Temp: %+4dC: Temperature reached but not stabilized\n",
+    printf("[DEBUG][%s] Temp: %+4dC: Temperature reached but not stabilized\n",
            buf, ctemp);
     break;
   case DRV_TEMP_STABILIZED:
     printf(
-        "[STATUS][%s] Temp: %+4dC: Temperature has stabilized at set point.\n",
+        "[DEBUG][%s] Temp: %+4dC: Temperature has stabilized at set point.\n",
         buf, ctemp);
     break;
   }
+  
+  /* report end of status */
+  printf("[DEBUG][%s] End of status report for ANDOR2K:\n", date_str(buf));
 
   return 0;
 }
@@ -119,8 +127,8 @@ int select_camera(int num) noexcept {
   if (num < 0) {
     fprintf(
         stderr,
-        "[ERROR][%s] Invalid camera index number; failed to select camera\n",
-        date_str(buf));
+        "[ERROR][%s] Invalid camera index number; failed to select camera (traceback: %s)\n",
+        date_str(buf), __func__);
     return -1;
   } else if (num == 0) {
     return num;
@@ -137,8 +145,8 @@ int select_camera(int num) noexcept {
     } else {
       fprintf(stderr,
               "[ERROR][%s] Invalid camera index provided; failed to select "
-              "camera\n",
-              date_str(buf));
+              "camera (traceback: %s)\n",
+              date_str(buf), __func__);
       return -1;
     }
   }
