@@ -6,6 +6,9 @@
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
 
+/// @brief Max chars for image type (aka flat, bias, etc)
+constexpr int MAX_IMAGE_TYPE_CHARS = 16;
+
 // @brief Max chars for any fits file (including path)
 constexpr int MAX_FITS_FILE_SIZE = 256;
 
@@ -52,7 +55,7 @@ struct AndorParameters {
   float exposure_;
   int num_images_{1};
 
-  char type_[16] = {'\0'};
+  char type_[MAX_IMAGE_TYPE_CHARS] = {'\0'};
   char initialization_dir_[128] = "/usr/local/etc/andor";
   char image_filename_[MAX_FITS_FILENAME_SIZE] = "";
   char save_dir_[128] = "/home/andor2k/fits";

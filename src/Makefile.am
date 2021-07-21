@@ -48,7 +48,8 @@ MCXXFLAGS = \
 pkginclude_HEADERS = \
         cpp_socket.hpp \
 		andor2k.hpp \
-		cppfits.hpp
+		cppfits.hpp \
+		andor2kd.hpp
 
 ##
 ##  Source files (distributed).
@@ -64,7 +65,8 @@ dist_libhelmosandor2k_la_SOURCES = \
 	fits_filenames.cpp \
 	sys_shutdown.cpp \
 	usage.cpp \
-	get_acquisition.cpp
+	get_acquisition.cpp \
+	resolve_image_parameters.cpp
 
 #andor2k_SOURCES = andor2k.cpp
 #andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src

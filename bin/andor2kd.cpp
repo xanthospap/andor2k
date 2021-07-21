@@ -1,8 +1,8 @@
 #include "andor2k.hpp"
-#include "atmcdLXd.h"
 #include "andor2kd.hpp"
 #include "cpp_socket.hpp"
 #include "cppfits.hpp"
+#include "atmcdLXd.h"
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -25,7 +25,7 @@ constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; /* YYYY-MM-DD HH:MM:SS */
-char buffer[1024];         /* used by sockets to communicate with client */
+char buffer[SOCKET_BUFFER_SIZE];/* used by sockets to communicate with client */
 
 /* ANDOR2K parameters controlling usage */
 AndorParameters params;
@@ -67,6 +67,7 @@ int set_temperature(const char *command = buffer) noexcept {
   return cool_to_temperature(target_temp);
 }
 
+/*
 int resolve_image_parameters(const char *command = buffer,
                              AndorParameters &aparams = params) noexcept {
   if (std::strncmp(command, "image", 5))
@@ -79,7 +80,6 @@ int resolve_image_parameters(const char *command = buffer,
   token = std::strtok(nullptr, " ");
   char *end;
   while (token) {
-    /* BINNING ACCUMULATION (AKA IMAGES) ---------------------------------*/
     if (!std::strncmp(token, "--nimages", 9)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(
@@ -104,8 +104,6 @@ int resolve_image_parameters(const char *command = buffer,
                AcquisitionMode2int(aparams.acquisition_mode_));
       }
 
-      /* BINNING OPTIONS
-       * -------------------------------------------------------*/
     } else if (!std::strncmp(token, "--bin", 5)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
@@ -152,9 +150,6 @@ int resolve_image_parameters(const char *command = buffer,
                 date_str(now_str), token);
         return 1;
       }
-
-      /* IMAGE DIMENSIONS OPTIONS
-       * ----------------------------------------------*/
     } else if (!std::strncmp(token, "--hstart", 8)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
@@ -215,9 +210,6 @@ int resolve_image_parameters(const char *command = buffer,
                 date_str(now_str), token);
         return 1;
       }
-
-      /* IMAGE FILENAME
-       * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--filename", 10)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(
@@ -270,7 +262,7 @@ int resolve_image_parameters(const char *command = buffer,
     token = std::strtok(nullptr, " ");
   }
   return 0;
-}
+}*/
 
 int setup_image(int &xpixels, int &ypixels,
                 const AndorParameters &aparams = params) noexcept {
