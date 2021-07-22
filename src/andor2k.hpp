@@ -1,8 +1,8 @@
 #ifndef __HELMOS_ANDOR2K_HPP__
 #define __HELMOS_ANDOR2K_HPP__
 
-#include <cstdint>
 #include "atmcdLXd.h"
+#include <cstdint>
 
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
@@ -66,8 +66,9 @@ struct AndorParameters {
   // Single Track Mode
   int singe_track_center_{1}, single_track_height_{1};
   // Image Mode
-  int image_hbin_{1}, image_vbin_{1}, image_hstart_{1}, image_hend_{MAX_PIXELS_IN_DIM},
-      image_vstart_{1}, image_vend_{MAX_PIXELS_IN_DIM};
+  int image_hbin_{1}, image_vbin_{1}, image_hstart_{1},
+      image_hend_{MAX_PIXELS_IN_DIM}, image_vstart_{1},
+      image_vend_{MAX_PIXELS_IN_DIM};
 
   /* options for acquisition mode */
   AcquisitionMode acquisition_mode_{AcquisitionMode::SingleScan};
@@ -122,7 +123,9 @@ int print_status() noexcept;
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
-int setup_acquisition(const AndorParameters *params, int& width, int& height, at_32* img_mem) noexcept;
+int setup_acquisition(const AndorParameters *params, int &width, int &height,
+                      at_32 *img_mem) noexcept;
 
-int get_acquisition(const AndorParameters *params, int xnumpixels, int ynumpixels, at_32* img_buffer) noexcept;
+int get_acquisition(const AndorParameters *params, int xnumpixels,
+                    int ynumpixels, at_32 *img_buffer) noexcept;
 #endif

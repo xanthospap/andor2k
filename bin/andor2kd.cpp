@@ -1,8 +1,8 @@
-#include "andor2k.hpp"
 #include "andor2kd.hpp"
+#include "andor2k.hpp"
+#include "atmcdLXd.h"
 #include "cpp_socket.hpp"
 #include "cppfits.hpp"
-#include "atmcdLXd.h"
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -25,7 +25,8 @@ constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; /* YYYY-MM-DD HH:MM:SS */
-char buffer[SOCKET_BUFFER_SIZE];/* used by sockets to communicate with client */
+char
+    buffer[SOCKET_BUFFER_SIZE]; /* used by sockets to communicate with client */
 
 /* ANDOR2K parameters controlling usage */
 AndorParameters params;
@@ -266,22 +267,29 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
 
 int get_image(const char *command = buffer) noexcept {
   if (resolve_image_parameters(command, params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to resolve image parameters; aborting request! (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Failed to resolve image parameters; aborting request! "
+            "(traceback: %s)\n",
             date_str(now_str), __func__);
     return 1;
   }
 
   int width, height;
-  at_32* data = nullptr;
+  at_32 *data = nullptr;
   int status = 0;
   if (setup_acquisition(&params, width, height, data)) {
-    fprintf(stderr, "[ERROR][%s] Failed to setup acquisition; aborting request! (traceback: %s)\n", date_str(now_str), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to setup acquisition; aborting request! "
+            "(traceback: %s)\n",
+            date_str(now_str), __func__);
     status = 2;
   }
 
   if (!status) {
     if (status = get_acquisition(&params, width, height, data); status != 0) {
-      fprintf(stderr, "[ERROR][%s] Failed to get/save image(s); aborting request now (traceback: %s)\n",
+      fprintf(stderr,
+              "[ERROR][%s] Failed to get/save image(s); aborting request now "
+              "(traceback: %s)\n",
               date_str(now_str), __func__);
       status = 3;
     }

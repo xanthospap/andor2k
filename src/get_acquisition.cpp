@@ -13,9 +13,9 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
 int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept;
 int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept;
+                     at_32 *img_buffer) noexcept;
 int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept;
+                  at_32 *img_buffer) noexcept;
 
 /// @brief Setup and get an acquisition (single or multiple scans)
 /// The function will:
@@ -29,28 +29,32 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
 ///            acquired exposures are going to have. See setup_acquisition
 /// @param[out] height The actual number of pixels in the Y-dimension that the
 ///            acquired exposures are going to have. See setup_acquisition
-/// @param[out] img_mem A buffer where enough memory is allocated to store one 
+/// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-int get_acquisition(const AndorParameters *params, int xnumpixels, int ynumpixels, at_32* img_buffer) noexcept {
+int get_acquisition(const AndorParameters *params, int xnumpixels,
+                    int ynumpixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
 
   /* depending on acquisition mode, acquire the exposure(s) */
   int acq_status = 0;
   switch (params->acquisition_mode_) {
-    case AcquisitionMode::SingleScan:
-      acq_status = get_single_scan(params, xnumpixels, ynumpixels, img_buffer); 
-      break;
-    case AcquisitionMode::RunTillAbort:
-      acq_status = get_rta_scan(params, xnumpixels, ynumpixels, img_buffer); 
-      break;
-    case AcquisitionMode::KineticSeries:
-      acq_status = get_kinetic_scan(params, xnumpixels, ynumpixels, img_buffer); 
-      break;
-    default:
-      fprintf(stderr, "[ERROR][%s] Invalid Acquisition Mode; don't know what to do! (traceback: %s)\n", date_str(buf), __func__);
-      acq_status = 10;
+  case AcquisitionMode::SingleScan:
+    acq_status = get_single_scan(params, xnumpixels, ynumpixels, img_buffer);
+    break;
+  case AcquisitionMode::RunTillAbort:
+    acq_status = get_rta_scan(params, xnumpixels, ynumpixels, img_buffer);
+    break;
+  case AcquisitionMode::KineticSeries:
+    acq_status = get_kinetic_scan(params, xnumpixels, ynumpixels, img_buffer);
+    break;
+  default:
+    fprintf(stderr,
+            "[ERROR][%s] Invalid Acquisition Mode; don't know what to do! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
+    acq_status = 10;
   }
 
   /* check for errors */
@@ -68,17 +72,17 @@ int get_acquisition(const AndorParameters *params, int xnumpixels, int ynumpixel
 /// @brief Get/Save a Kinetic acquisition to FITS format
 /// The function will perform the following:
 /// * StartAcquisition
-/// * GetAcquiredData 
+/// * GetAcquiredData
 /// * Save to FITS file (using int32_t)
 /// (above steps are looped for number of images required)
 /// * AbortAcquisition
 /// @param[in] params Currently not used in the function
 /// @param[in] xpixels Number of x-axis pixels, aka width
 /// @param[in] ypixels Number of y-axis pixels, aka height
-/// @param[in] img_buffer An array of int32_t large enough to hold 
+/// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
 int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept {
+                     at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
@@ -90,38 +94,51 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
 
   at_32 lAcquired = 0;
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
-    
+
     /* wait until acquisition finished */
     if (WaitForAcquisition() != DRV_SUCCESS) {
-      fprintf(stderr, "[ERROR][%s] Something happened while waiting for a new acquisition! Aborting (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Something happened while waiting for a new "
+              "acquisition! Aborting (traceback: %s)\n",
+              date_str(buf), __func__);
       AbortAcquisition();
       return 10;
     }
 
     /* total number of images acquired since the current acquisition started */
     GetTotalNumberImagesAcquired(&lAcquired);
-    
+
     /* update the data array with the most recently acquired image */
-    if (unsigned int err = GetMostRecentImage(img_buffer, xpixels * ypixels); err != DRV_SUCCESS) {
-      fprintf(stderr, "[ERROR][%s] Failed retrieving acquisition from cammera buffer! (traceback: %s)\n", date_str(buf), __func__);
+    if (unsigned int err = GetMostRecentImage(img_buffer, xpixels * ypixels);
+        err != DRV_SUCCESS) {
+      fprintf(stderr,
+              "[ERROR][%s] Failed retrieving acquisition from cammera buffer! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
       switch (err) {
-        case DRV_ERROR_ACK:
-          fprintf(stderr, "[ERROR][%s] Unable to communicate with card (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_P1INVALID:
-          fprintf(stderr, "[ERROR][%s] Invalid pointer (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_P2INVALID:
-          fprintf(stderr, "[ERROR][%s] Array size is incorrect (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_NO_NEW_DATA:
-          fprintf(stderr, "[ERROR][%s] There is no new data yet (traceback: %s)\n", date_str(buf), __func__);
-          break;
+      case DRV_ERROR_ACK:
+        fprintf(stderr,
+                "[ERROR][%s] Unable to communicate with card (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_P1INVALID:
+        fprintf(stderr, "[ERROR][%s] Invalid pointer (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_P2INVALID:
+        fprintf(stderr, "[ERROR][%s] Array size is incorrect (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_NO_NEW_DATA:
+        fprintf(stderr,
+                "[ERROR][%s] There is no new data yet (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
       }
       AbortAcquisition();
       return 10;
     }
-    
+
     /* save to FITS format */
     if (get_next_fits_filename(params, fits_filename)) {
       fprintf(stderr,
@@ -148,7 +165,8 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
     fits.close();
   } /* colected/saved all exposures! */
 
-  printf("[DEBUG][%s] Finished acquiring/saving %d images for sequence\n", date_str(buf), (int)lAcquired);
+  printf("[DEBUG][%s] Finished acquiring/saving %d images for sequence\n",
+         date_str(buf), (int)lAcquired);
 
   AbortAcquisition();
   return 0;
@@ -157,14 +175,14 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
 /// @brief Get/Save a Run Till Abort acquisition to FITS format
 /// The function will perform the following:
 /// * StartAcquisition
-/// * GetAcquiredData 
+/// * GetAcquiredData
 /// * Save to FITS file (using int32_t)
 /// (above steps are looped for number of images required)
 /// * AbortAcquisition
 /// @param[in] params Currently not used in the function
 /// @param[in] xpixels Number of x-axis pixels, aka width
 /// @param[in] ypixels Number of y-axis pixels, aka height
-/// @param[in] img_buffer An array of int32_t large enough to hold 
+/// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
 int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept {
@@ -179,38 +197,51 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
 
   at_32 lAcquired = 0;
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
-    
+
     /* wait until acquisition finished */
     if (WaitForAcquisition() != DRV_SUCCESS) {
-      fprintf(stderr, "[ERROR][%s] Something happened while waiting for a new acquisition! Aborting (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Something happened while waiting for a new "
+              "acquisition! Aborting (traceback: %s)\n",
+              date_str(buf), __func__);
       AbortAcquisition();
       return 10;
     }
 
     /* total number of images acquired since the current acquisition started */
     GetTotalNumberImagesAcquired(&lAcquired);
-    
+
     /* update the data array with the most recently acquired image */
-    if (unsigned int err = GetMostRecentImage(img_buffer, xpixels * ypixels); err != DRV_SUCCESS) {
-      fprintf(stderr, "[ERROR][%s] Failed retrieving acquisition from cammera buffer! (traceback: %s)\n", date_str(buf), __func__);
+    if (unsigned int err = GetMostRecentImage(img_buffer, xpixels * ypixels);
+        err != DRV_SUCCESS) {
+      fprintf(stderr,
+              "[ERROR][%s] Failed retrieving acquisition from cammera buffer! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
       switch (err) {
-        case DRV_ERROR_ACK:
-          fprintf(stderr, "[ERROR][%s] Unable to communicate with card (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_P1INVALID:
-          fprintf(stderr, "[ERROR][%s] Invalid pointer (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_P2INVALID:
-          fprintf(stderr, "[ERROR][%s] Array size is incorrect (traceback: %s)\n", date_str(buf), __func__);
-          break;
-        case DRV_NO_NEW_DATA:
-          fprintf(stderr, "[ERROR][%s] There is no new data yet (traceback: %s)\n", date_str(buf), __func__);
-          break;
+      case DRV_ERROR_ACK:
+        fprintf(stderr,
+                "[ERROR][%s] Unable to communicate with card (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_P1INVALID:
+        fprintf(stderr, "[ERROR][%s] Invalid pointer (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_P2INVALID:
+        fprintf(stderr, "[ERROR][%s] Array size is incorrect (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
+      case DRV_NO_NEW_DATA:
+        fprintf(stderr,
+                "[ERROR][%s] There is no new data yet (traceback: %s)\n",
+                date_str(buf), __func__);
+        break;
       }
       AbortAcquisition();
       return 10;
     }
-    
+
     /* save to FITS format */
     if (get_next_fits_filename(params, fits_filename)) {
       fprintf(stderr,
@@ -237,7 +268,8 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
     fits.close();
   } /* colected/saved all exposures! */
 
-  printf("[DEBUG][%s] Finished acquiring/saving %d images for sequence\n", date_str(buf), (int)lAcquired);
+  printf("[DEBUG][%s] Finished acquiring/saving %d images for sequence\n",
+         date_str(buf), (int)lAcquired);
 
   AbortAcquisition();
   return 0;
@@ -251,10 +283,10 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[in] params Currently not used in the function
 /// @param[in] xpixels Number of x-axis pixels, aka width
 /// @param[in] ypixels Number of y-axis pixels, aka height
-/// @param[in] img_buffer An array of int32_t large enough to hold 
+/// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
 int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept {
+                  at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
@@ -351,7 +383,6 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
   return 0;
 }
 
-
 /// @brief Get/Save a single scan acquisitionto FITS format
 /// The function will perform the following:
 /// * StartAcquisition
@@ -360,7 +391,7 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[in] params Currently not used in the function
 /// @param[in] xpixels Number of x-axis pixels, aka width
 /// @param[in] ypixels Number of y-axis pixels, aka height
-/// @param[in] img_buffer An array of int32_t large enough to hold 
+/// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
 int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
                     at_32 *img_buffer) noexcept {
@@ -381,7 +412,7 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
 
   /* get acquired data (from camera buffer) */
   unsigned int error = GetAcquiredData(img_buffer, xpixels * ypixels);
-  
+
   /* check for errors */
   int retstat = 0;
   if (error != DRV_SUCCESS) {
@@ -389,7 +420,7 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
             "[ERROR][%s] Failed to get acquired data! Aborting acquisition "
             "(traceback: %s)\n",
             date_str(buf), __func__);
-            retstat = 100;
+    retstat = 100;
     switch (error) {
     case DRV_ACQUIRING:
       fprintf(stderr,
@@ -430,10 +461,10 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
               "[ERROR][%s] Error Message: Undocumented error (traceback: %s)\n",
               date_str(buf), __func__);
       retstat = 6;
-  }
-  /* an error occured */
-  AbortAcquisition();
-  return retstat;
+    }
+    /* an error occured */
+    AbortAcquisition();
+    return retstat;
   }
 
   /* formulate a valid FITS filename to save the data to */

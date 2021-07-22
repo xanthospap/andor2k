@@ -1,8 +1,8 @@
-#include "andor2kd.hpp"
 #include "andor2k.hpp"
-#include <cstring>
+#include "andor2kd.hpp"
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
 /// @brief Resolve an image command-string
 /// An image command-string always starts with the string "image" and then is
@@ -16,22 +16,23 @@
 /// * --[vh]start [INT] starting pixel (inclusive, aka starting from 1 not 0)
 /// * --[vh]end [INT] ending pixel (inclusive, aka in range [1, 2048])
 /// * --filename [STRING] generic filename for exposure(s); a date-string, an
-///     index and the extension .fits will be added to the filename(s) when 
+///     index and the extension .fits will be added to the filename(s) when
 ///     acquiring the exposures.
 /// * --type [STRING] can be any of "flat", "bias", "object"
 /// * --exposure [FLOAT] exposure time in seconds
 ///
-/// @param[in] command A c-string holding the command to resolve; the string 
-///                    should start with the "image" token and hold as many 
+/// @param[in] command A c-string holding the command to resolve; the string
+///                    should start with the "image" token and hold as many
 ///                    options as needed. Here are examples of valid commands:
 /// "image --bin 2"
 /// "image --vbin 2 --hbin 4 --filename foobar --type object --exposure 4.6"
-/// @param[out] params The parameters instance where the resolved options (as 
+/// @param[out] params The parameters instance where the resolved options (as
 ///                    extracted from the command) are going to be saved. E.g.
-///                    given "image --bin 2" the params variables from vertical 
+///                    given "image --bin 2" the params variables from vertical
 ///                    and horizontal binning are goinf to be set to 2
 /// @return Anything other than 0 denotes an error
-int resolve_image_parameters(const char *command, AndorParameters &params) noexcept {
+int resolve_image_parameters(const char *command,
+                             AndorParameters &params) noexcept {
 
   /* first string should be "image" */
   if (std::strncmp(command, "image", 5))
@@ -40,7 +41,7 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
   /* datetime string buffer */
   char buf[32];
 
-    /* copy the input string so that we can tokenize it */
+  /* copy the input string so that we can tokenize it */
   char string[SOCKET_BUFFER_SIZE];
   std::memcpy(string, command, sizeof(char) * SOCKET_BUFFER_SIZE);
 
@@ -49,15 +50,15 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
   char *end;
   /* split remaining substring to tokens and process one at a time */
   while (token) {
-    
-    /* NUM IMAGES  
+
+    /* NUM IMAGES
      *--------------------------------------------------------*/
     if (!std::strncmp(token, "--nimages", 9)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Must provide a numeric argument to \"--nimages\" (traceback: %s)\n",
-            date_str(buf), __func__);
+        fprintf(stderr,
+                "[ERROR][%s] Must provide a numeric argument to \"--nimages\" "
+                "(traceback: %s)\n",
+                date_str(buf), __func__);
         return 1;
       }
       params.num_images_ = std::strtol(token, &end, 10);
@@ -70,11 +71,10 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
       }
       if (params.num_images_ > 1) {
         params.acquisition_mode_ = AcquisitionMode::RunTillAbort;
-        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n",
-               date_str(buf),
+        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n", date_str(buf),
                AcquisitionMode2int(params.acquisition_mode_));
       } else if (params.num_images_ == 1) {
-          params.acquisition_mode_ = AcquisitionMode::SingleScan;
+        params.acquisition_mode_ = AcquisitionMode::SingleScan;
       }
 
       /* BINNING OPTIONS
@@ -82,7 +82,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--bin", 5)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--bin\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--bin\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -98,7 +99,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--hbin", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hbin\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--hbin\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -113,7 +115,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--vbin", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vbin\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--vbin\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -131,7 +134,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--hstart", 8)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hstart\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--hstart\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -146,7 +150,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--hend", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hend\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--hend\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -161,7 +166,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--vstart", 8)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vstart\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--vstart\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -176,7 +182,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--vend", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vend\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a numeric argument to \"--vend\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -193,14 +200,15 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--filename", 10)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Must provide a string argument to \"--filename\" (traceback: %s)\n",
-            date_str(buf), __func__);
+        fprintf(stderr,
+                "[ERROR][%s] Must provide a string argument to \"--filename\" "
+                "(traceback: %s)\n",
+                date_str(buf), __func__);
         return 1;
       }
       if (std::strlen(token) >= 128) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
+        fprintf(stderr,
+                "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
                 date_str(buf), token, __func__);
         return 1;
       }
@@ -212,24 +220,27 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
     } else if (!std::strncmp(token, "--type", 6)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a string argument to \"--type\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a string argument to \"--type\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
-      if (std::strlen(token) >= MAX_IMAGE_TYPE_CHARS ) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
+      if (std::strlen(token) >= MAX_IMAGE_TYPE_CHARS) {
+        fprintf(stderr,
+                "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
                 date_str(buf), token, __func__);
         return 1;
       }
       std::memset(params.type_, '\0', MAX_IMAGE_TYPE_CHARS);
       std::strcpy(params.type_, token);
-    
+
       /* EXPOSURE
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--exposure", 10)) {
       if (token = std::strtok(nullptr, " "); token == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Must provide a float argument to \"--exposure\" (traceback: %s)\n",
+                "[ERROR][%s] Must provide a float argument to \"--exposure\" "
+                "(traceback: %s)\n",
                 date_str(buf), __func__);
         return 1;
       }
@@ -244,7 +255,8 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
       }
 
     } else {
-      fprintf(stderr, "[WRNNG][%s] Ignoring input parameter \"%s\" (traceback: %s)\n",
+      fprintf(stderr,
+              "[WRNNG][%s] Ignoring input parameter \"%s\" (traceback: %s)\n",
               date_str(buf), token, __func__);
     }
 
@@ -254,20 +266,34 @@ int resolve_image_parameters(const char *command, AndorParameters &params) noexc
   /* some final testing */
   int status = 0;
   if (!params.image_vbin_ || !params.image_hbin_) {
-      fprintf(stderr, "[ERROR][%s] Binning parameter(s) cannot be zero! Smallest value is 1 (traceback: %s)\n", date_str(buf), __func__);
-      status = 2;
+    fprintf(stderr,
+            "[ERROR][%s] Binning parameter(s) cannot be zero! Smallest value "
+            "is 1 (traceback: %s)\n",
+            date_str(buf), __func__);
+    status = 2;
   }
-  if ((params.image_hstart_ < 1 || params.image_hstart_ >= MAX_PIXELS_IN_DIM) || (params.image_vstart_ < 1 || params.image_vstart_ >= MAX_PIXELS_IN_DIM)) {
-      fprintf(stderr, "[ERROR][%s] Starting pixel must be in range [1, %d) (traceback: %s)\n", date_str(buf), MAX_PIXELS_IN_DIM, __func__);
-      status = 2;
+  if ((params.image_hstart_ < 1 || params.image_hstart_ >= MAX_PIXELS_IN_DIM) ||
+      (params.image_vstart_ < 1 || params.image_vstart_ >= MAX_PIXELS_IN_DIM)) {
+    fprintf(
+        stderr,
+        "[ERROR][%s] Starting pixel must be in range [1, %d) (traceback: %s)\n",
+        date_str(buf), MAX_PIXELS_IN_DIM, __func__);
+    status = 2;
   }
-  if ((params.image_hend_ <= 1 || params.image_hend_ > MAX_PIXELS_IN_DIM) || (params.image_vend_ <= 1 || params.image_vend_ > MAX_PIXELS_IN_DIM)) {
-      fprintf(stderr, "[ERROR][%s] Ending pixel must be in range [2, %d] (traceback: %s)\n", date_str(buf), MAX_PIXELS_IN_DIM, __func__);
-      status = 2;
+  if ((params.image_hend_ <= 1 || params.image_hend_ > MAX_PIXELS_IN_DIM) ||
+      (params.image_vend_ <= 1 || params.image_vend_ > MAX_PIXELS_IN_DIM)) {
+    fprintf(
+        stderr,
+        "[ERROR][%s] Ending pixel must be in range [2, %d] (traceback: %s)\n",
+        date_str(buf), MAX_PIXELS_IN_DIM, __func__);
+    status = 2;
   }
   if (params.exposure_ < 0e0) {
-      fprintf(stderr, "[ERROR][%s] Exposure must be a positive real number (traceback: %s)\n", date_str(buf), __func__);
-      status = 2;
+    fprintf(
+        stderr,
+        "[ERROR][%s] Exposure must be a positive real number (traceback: %s)\n",
+        date_str(buf), __func__);
+    status = 2;
   }
 
   return status;

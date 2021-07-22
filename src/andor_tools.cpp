@@ -21,7 +21,8 @@ int print_status() noexcept {
 
   /* get status */
   if (GetStatus(&status) != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR][%s] Failed to get camera status! (traceback: %s)\n",
+    fprintf(stderr,
+            "[ERROR][%s] Failed to get camera status! (traceback: %s)\n",
             date_str(buf), __func__);
     return 1;
   }
@@ -105,7 +106,7 @@ int print_status() noexcept {
         buf, ctemp);
     break;
   }
-  
+
   /* report end of status */
   printf("[DEBUG][%s] End of status report for ANDOR2K:\n", date_str(buf));
 
@@ -125,10 +126,10 @@ int print_status() noexcept {
 int select_camera(int num) noexcept {
   char buf[32] = {'\0'};
   if (num < 0) {
-    fprintf(
-        stderr,
-        "[ERROR][%s] Invalid camera index number; failed to select camera (traceback: %s)\n",
-        date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Invalid camera index number; failed to select camera "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     return -1;
   } else if (num == 0) {
     return num;

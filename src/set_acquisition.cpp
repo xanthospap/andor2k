@@ -15,18 +15,19 @@
 /// @param[in] params An AndorParameters instance holding information on the
 ///            acquisition we are going to setup.
 /// @param[out] width The actual number of pixels in the X-dimension that the
-///            acquired exposures are going to have.This number is ccomputed 
+///            acquired exposures are going to have.This number is ccomputed
 ///            based on the params instance
 /// @param[out] height The actual number of pixels in the Y-dimension that the
-///            acquired exposures are going to have.This number is ccomputed 
+///            acquired exposures are going to have.This number is ccomputed
 ///            based on the params instance
-/// @param[out] img_mem A buffer where enough memory is allocated to store one 
+/// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-/// @warning Note that you are now incharge of the memory allocated; the 
+/// @warning Note that you are now incharge of the memory allocated; the
 /// memory should be freed/deleted after usage to avoid memory leaks
-int setup_acquisition(const AndorParameters *params, int& width, int& height, at_32* img_mem) noexcept {
-  
+int setup_acquisition(const AndorParameters *params, int &width, int &height,
+                      at_32 *img_mem) noexcept {
+
   char buf[32] = {'\0'}; /* buffer for datetime string */
 
   /* check and set read-out mode */
@@ -95,7 +96,7 @@ int setup_acquisition(const AndorParameters *params, int& width, int& height, at
          ynumpixels);
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
-  
+
   /* allocate memory to (temporarily) hold the image data */
   long image_pixels = xnumpixels * ynumpixels;
   img_mem = new at_32[image_pixels];
