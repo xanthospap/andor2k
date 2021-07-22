@@ -52,7 +52,7 @@ int set_temperature(const char *command = buffer) noexcept {
         stderr,
         "[ERROR][%s] Failed to resolve target temperature in command \"%s\"\n",
         date_str(now_str), command);
-    fprintf(stderr, "[ERROR][%s] Skippig command\n", now_str, command);
+    fprintf(stderr, "[ERROR][%s] Skippig command \"%s\"\n", now_str, command);
     return 1;
   }
   if (target_temp < ANDOR_MIN_TEMP || target_temp > ANDOR_MAX_TEMP) {
@@ -60,285 +60,14 @@ int set_temperature(const char *command = buffer) noexcept {
             "[ERROR][%s] Refusing to set temperature outside limits: [%+3d, "
             "%+3d]\n",
             date_str(now_str), ANDOR_MIN_TEMP, ANDOR_MAX_TEMP);
-    fprintf(stderr, "[ERROR][%s] Skippig command\n", now_str, command);
+    fprintf(stderr, "[ERROR][%s] Skippig command \"%s\"\n", now_str, command);
     return 1;
   }
   // command seems ok .... do it!
   return cool_to_temperature(target_temp);
 }
 
-/*
-int resolve_image_parameters(const char *command = buffer,
-                             AndorParameters &aparams = params) noexcept {
-  if (std::strncmp(command, "image", 5))
-    return 1;
-
-  char string[1024];
-  std::memcpy(string, command, sizeof(char) * 1024);
-
-  char *token = std::strtok(string, " "); // this is the command
-  token = std::strtok(nullptr, " ");
-  char *end;
-  while (token) {
-    if (!std::strncmp(token, "--nimages", 9)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Must provide a numeric argument to \"--nimages\"\n",
-            date_str(now_str));
-        return 1;
-      }
-      aparams.num_images_ = std::strtol(token, &end, 10);
-      if (end == token || aparams.num_images_ < 1) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to (valid) "
-                "integral numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-      if (aparams.num_images_ > 1) {
-        // aparams.acquisition_mode_ = AcquisitionMode::KineticSeries;
-        aparams.acquisition_mode_ = AcquisitionMode::RunTillAbort;
-        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n",
-               date_str(now_str),
-               AcquisitionMode2int(aparams.acquisition_mode_));
-      }
-
-    } else if (!std::strncmp(token, "--bin", 5)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--bin\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_vbin_ = std::strtol(token, &end, 10);
-      aparams.image_hbin_ = aparams.image_vbin_;
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--hbin", 6)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hbin\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_hbin_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--vbin", 6)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vbin\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_vbin_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--hstart", 8)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hstart\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_hstart_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--hend", 6)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--hend\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_hend_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--vstart", 8)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vstart\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_vstart_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--vend", 6)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a numeric argument to \"--vend\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.image_vend_ = std::strtol(token, &end, 10);
-      if (end == token) {
-        fprintf(stderr,
-                "[ERROR][%s] Failed to convert parameter \"%s\" to integral "
-                "numeric value\n",
-                date_str(now_str), token);
-        return 1;
-      }
-    } else if (!std::strncmp(token, "--filename", 10)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Must provide a string argument to \"--filename\"\n",
-            date_str(now_str));
-        return 1;
-      }
-      if (std::strlen(token) >= 128) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n",
-                date_str(now_str), token);
-        return 1;
-      }
-      std::memset(aparams.image_filename_, '\0', MAX_FITS_FILE_SIZE);
-      std::strcpy(aparams.image_filename_, token);
-
-    } else if (!std::strncmp(token, "--type", 6)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a string argument to \"--type\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      if (std::strlen(token) > 15) {
-        fprintf(stderr, "[ERROR][%s] Invalid argument for \"%s\"\n",
-                date_str(now_str), token);
-        return 1;
-      }
-      std::memcpy(aparams.type_, token, std::strlen(token));
-    } else if (!std::strncmp(token, "--exposure", 10)) {
-      if (token = std::strtok(nullptr, " "); token == nullptr) {
-        fprintf(stderr,
-                "[ERROR][%s] Must provide a float argument to \"--exposure\"\n",
-                date_str(now_str));
-        return 1;
-      }
-      aparams.exposure_ = std::strtod(token, &end);
-      if (end == token || !(aparams.exposure_ > 0e0)) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Failed to convert parameter \"%s\" to a (valid) float "
-            "numeric value\n",
-            date_str(now_str), token);
-        return 1;
-      }
-    } else {
-      fprintf(stderr, "[WRNNG][%s] Ignoring input parameter \"%s\"\n",
-              date_str(now_str), token);
-    }
-    token = std::strtok(nullptr, " ");
-  }
-  return 0;
-}*/
-
-int setup_image(int &xpixels, int &ypixels,
-                const AndorParameters &aparams = params) noexcept {
-  // set read mode
-  if (setup_read_out_mode(&aparams)) {
-    fprintf(stderr, "[FATAL][%s] Failed to set read mode...exiting\n",
-            date_str(now_str));
-    return 10;
-  }
-
-  // set acquisition mode (this will also set the exposure time)
-  if (setup_acquisition_mode(&aparams)) {
-    fprintf(stderr, "[FATAL][%s] Failed to set acquisition mode...exiting\n",
-            date_str(now_str));
-    return 10;
-  }
-  // get the current "valid" acquisition timing information
-  if (aparams.acquisition_mode_ != AcquisitionMode::SingleScan) {
-    float vexposure, vaccumulate, vkinetic;
-    if (GetAcquisitionTimings(&vexposure, &vaccumulate, &vkinetic) !=
-        DRV_SUCCESS) {
-      fprintf(stderr,
-              "[FATAL][%s] Failed to get current valid acquisition "
-              "timings...exiting\n",
-              date_str(now_str));
-      return 10;
-    }
-    printf("[DEBUG][%s] Actual acquisition timings tuned by ANDOR:\n",
-           date_str(now_str));
-    printf("[DEBUG][%s] Exposure Time        : %5.2f sec. (vs %5.2f given)\n",
-           date_str(now_str), vexposure, aparams.exposure_);
-    printf("[DEBUG][%s] Accumulate Cycle Time: %5.2f sec. (vs %5.2f given)\n",
-           date_str(now_str), vaccumulate, aparams.accumulation_cycle_time_);
-    printf("[DEBUG][%s] Kinetic Cycle Time   : %5.2f sec. (vs %5.2f given)\n",
-           date_str(now_str), vkinetic, aparams.kinetics_cycle_time_);
-  }
-
-  // get size of the detector in pixels
-  // int xpixels, ypixels;
-  unsigned int error = GetDetector(&xpixels, &ypixels);
-  if (error != DRV_SUCCESS) {
-    fprintf(stderr, "[FATAL][%s] Failed to get detector dimensions...exiting\n",
-            date_str(now_str));
-    return 10;
-  }
-  printf("[DEBUG][%s] Detector dimensions: %5dx%5d (in pixels)\n",
-         date_str(now_str), xpixels, ypixels);
-  printf("[DEBUG][%s] Computed values are:\n", date_str(now_str));
-  int width = aparams.image_hend_ - aparams.image_hstart_ + 1,
-      height = aparams.image_vend_ - aparams.image_vstart_ + 1;
-  long pixels = (width / aparams.image_hbin_) * (height / aparams.image_vbin_);
-  printf("[DEBUG][%s] Width  = %5d - %5d = %5d\n", date_str(now_str),
-         aparams.image_hend_, aparams.image_hstart_, width);
-  printf("[DEBUG][%s] Height = %5d - %5d = %5d\n", date_str(now_str),
-         params.image_vend_, aparams.image_vstart_, height);
-  printf("[DEBUG][%s] Num of pixels: %10ld\n", date_str(now_str), pixels);
-
-  // initialize shutter
-  error =
-      SetShutter(1, ShutterMode2int(aparams.shutter_mode_),
-                 aparams.shutter_closing_time_, aparams.shutter_opening_time_);
-  if (error != DRV_SUCCESS) {
-    fprintf(stderr, "[FATAL][%s] Failed to initialize shutter...exiting\n",
-            date_str(now_str));
-    return 10;
-  }
-  printf("[DEBUG][%s] Shutter initialized to closing/opening delay: %3d/%3d "
-         "milliseconds\n",
-         date_str(now_str), aparams.shutter_closing_time_,
-         aparams.shutter_opening_time_);
-  printf("[DEBUG][%s] Shutter mode : %1d\n", date_str(now_str),
-         ShutterMode2int(aparams.shutter_mode_));
-
-  return 0;
-}
-
+/* OBSOLETE not used anymore */
 int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
   /* ------------------------------------------------------------ ACQUISITION */
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(now_str));
@@ -426,7 +155,7 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
         error = GetOldestImage(data, xpixels * ypixels);
 
         if (error == DRV_P2INVALID || error == DRV_P1INVALID) {
-          fprintf(stderr, "[ERROR][%s] Acquisition error, nr #%s\n",
+          fprintf(stderr, "[ERROR][%s] Acquisition error, nr #%u\n",
                   date_str(now_str), error);
           fprintf(stderr, "[ERROR][%s] Aborting acquisition.\n",
                   date_str(now_str));
@@ -537,28 +266,30 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
 
 int get_image(const char *command = buffer) noexcept {
   if (resolve_image_parameters(command, params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
-            date_str(now_str));
+    fprintf(stderr, "[ERROR][%s] Failed to resolve image parameters; aborting request! (traceback: %s)\n",
+            date_str(now_str), __func__);
     return 1;
   }
 
-  if (get_acquisition(&params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
-            date_str(now_str));
-    return 1;
+  int width, height;
+  at_32* data = nullptr;
+  int status = 0;
+  if (setup_acquisition(&params, width, height, data)) {
+    fprintf(stderr, "[ERROR][%s] Failed to setup acquisition; aborting request! (traceback: %s)\n", date_str(now_str), __func__);
+    status = 2;
   }
 
-  return 0;
-
-  /*
-  int xpixels, ypixels;
-  if (setup_image(xpixels, ypixels, params)) {
-    fprintf(stderr, "[ERROR][%s] Failed to get image; aborted\n",
-  date_str(now_str)); return 1;
+  if (!status) {
+    if (status = get_acquisition(&params, width, height, data); status != 0) {
+      fprintf(stderr, "[ERROR][%s] Failed to get/save image(s); aborting request now (traceback: %s)\n",
+              date_str(now_str), __func__);
+      status = 3;
+    }
   }
 
-  return acquire_image(params, xpixels, ypixels);
-  */
+  delete[] data;
+
+  return status;
 }
 
 int resolve_command(const char *command = buffer) noexcept {
@@ -678,9 +409,7 @@ int main() {
 
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR][%s] Failed creating deamon\n", date_str(now_str));
-    // fprintf(stderr, "[ERROR] what(): %s". e.what());
     fprintf(stderr, "[FATAL][%s] ... exiting\n", date_str(now_str));
-    // return 1;
   }
 
   system_shutdown();

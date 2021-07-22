@@ -2,6 +2,7 @@
 #define __HELMOS_ANDOR2K_HPP__
 
 #include <cstdint>
+#include "atmcdLXd.h"
 
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
@@ -121,6 +122,7 @@ int print_status() noexcept;
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
-int get_acquisition(const AndorParameters *params) noexcept;
+int setup_acquisition(const AndorParameters *params, int& width, int& height, at_32* img_mem) noexcept;
 
+int get_acquisition(const AndorParameters *params, int xnumpixels, int ynumpixels, at_32* img_buffer) noexcept;
 #endif

@@ -66,6 +66,7 @@ dist_libhelmosandor2k_la_SOURCES = \
 	sys_shutdown.cpp \
 	usage.cpp \
 	get_acquisition.cpp \
+	set_acquisition.cpp \
 	resolve_image_parameters.cpp
 
 #andor2k_SOURCES = andor2k.cpp
