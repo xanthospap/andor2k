@@ -64,7 +64,8 @@ int get_acquisition(const AndorParameters *params, int xnumpixels,
   }
 
   /* free allocated memory
-  delete[] img_buffer;*/
+  delete[] img_buffer;
+  */
 
   return acq_status;
 }
@@ -81,6 +82,9 @@ int get_acquisition(const AndorParameters *params, int xnumpixels,
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
+/// @note before each (new) acquisition, we are checking the 
+/// sig_kill_acquisition (extern) variable; if set to true, we are going to
+/// abort and return a negative integer.
 int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
                      at_32 *img_buffer) noexcept {
 
@@ -94,6 +98,12 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
 
   at_32 lAcquired = 0;
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
+
+    /* do we have a signal to quit ? */
+    if (sig_kill_acquisition) {
+      sig_kill_acquisition = 0;
+      return -1;
+    }
 
     /* wait until acquisition finished */
     if (WaitForAcquisition() != DRV_SUCCESS) {
@@ -184,6 +194,9 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
+/// @note before each (new) acquisition, we are checking the 
+/// sig_kill_acquisition (extern) variable; if set to true, we are going to
+/// abort and return a negative integer.
 int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept {
 
@@ -197,6 +210,12 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
 
   at_32 lAcquired = 0;
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
+    
+    /* do we have a signal to quit ? */
+    if (sig_kill_acquisition) {
+      sig_kill_acquisition = 0;
+      return -1;
+    }
 
     /* wait until acquisition finished */
     if (WaitForAcquisition() != DRV_SUCCESS) {

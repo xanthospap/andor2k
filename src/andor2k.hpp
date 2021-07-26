@@ -27,6 +27,9 @@ constexpr int MAX_COOLING_DURATION = 30;
 /// @brief Max pixels in width/height
 constexpr int MAX_PIXELS_IN_DIM = 2048;
 
+/// @brief signal for killing an acquisition
+extern int sig_kill_acquisition;
+
 enum class ReadOutMode : int_fast8_t {
   FullVerticalBinning = 0,
   MultiTrack = 1,

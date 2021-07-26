@@ -56,6 +56,7 @@ pkginclude_HEADERS = \
 ## ----------------------------
 ##
 dist_libhelmosandor2k_la_SOURCES = \
+        andor2k.cpp \
 	cpp_socket.cpp \
 	cmd_parser.cpp \
 	andor_tools.cpp \

@@ -100,6 +100,16 @@ int setup_acquisition(const AndorParameters *params, int &width, int &height,
   /* allocate memory to (temporarily) hold the image data */
   long image_pixels = xnumpixels * ynumpixels;
   img_mem = new at_32[image_pixels];
+  
+  /* gcc wants smthng to be done with img_mem else it complains about an 
+   * unused variable; do something!
+   */
+   #ifdef __GNUC__
+    #ifndef __clang__
+      std::memset(img_mem, 0, image_pixels*sizeof(at_32));
+#endif
+#endif
+
 
   width = xnumpixels;
   height = ynumpixels;

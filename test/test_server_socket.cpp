@@ -1,9 +1,21 @@
 #include "cpp_socket.hpp"
 #include <cstring>
 #include <iostream>
+#include <thread>
+#include <chrono>
 
+using namespace std::chrono_literals;
 using andor2k::ServerSocket;
 using andor2k::Socket;
+
+void do_work() {
+  printf("server doing work ....\n");
+  for (int i=0; i<20; ++i) {
+    std::this_thread::sleep_for(1000ms);
+    printf("\tworking ...\n");
+  }
+  return;
+}
 
 void chat(const Socket &socket) {
   char buffer[1024];
