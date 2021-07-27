@@ -5,38 +5,165 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <cstdlib>
 #include <thread>
+#include <openssl/sha.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+#include <bit>
 
 using andor2k::ClientSocket;
 using andor2k::Socket;
 
-int decode_message(const char* message) noexcept {
+/// @brief a pretty big char buffer for bzip2 decompressing
+char str_buffer_long[ARISTARCHOS_DECODE_BUFFER_SIZE];
+
+/// @brief  base64 decode a given string
+/// This function will use the SSL BIO lib to decode a string in base64 
+/// encryption format.
+/// @param[in] source string to decode; must be null terminated
+/// @param[out] decoded buffer to place the decoded message; must be at least
+///             of the same size as the input string
+/// @return a pointer to decoded (the null terminated decoded string)
+char *unbase64(const char *source, char* decoded) noexcept {
+  BIO *b64, *bmem;
+ 
+  int length = std::strlen(source);
+  std::memset(decoded, '\0', length + 1);
+ 
+  // char* str = std::strdup(source);
+  char *str = new char[length+1];
+  std::memset(str, '\0', length+1);
+  std::strcpy(str, source);
+
+  b64 = BIO_new(BIO_f_base64());
+  bmem = BIO_new_mem_buf(str, length);
+  bmem = BIO_push(b64, bmem);
+ 
+  BIO_read(bmem, decoded, length);
+  BIO_free_all(bmem);
+
+  delete[] str;
+
+  return decoded;
+}
+
+/// @brief Add char after every n characters in string
+/// This function will create a new copy of the string source, where after every
+/// every character an extra delim character is added. A delim character is also
+/// added at the end of the string. The new string is null terminated.
+/// Example (every=6, delim='-'):
+/// Original string [ab] of size 2, becomes: [ab+]
+/// Original string [abcdef] of size 6, becomes: [abcdef+]
+/// Original string [abcdefg] of size 7, becomes: [abcdef+g+]
+/// Original string [abcdefghijklmnopqrstuvwxy] of size 25, becomes: 
+/// [abcdef+ghijkl+mnopqr+stuvwx+y+]
+/// @param[in] source the original, null-terminated string
+/// @param[out] dest the resulting string; the size of the array must be large
+///             enough to hold the result string
+/// @param[in] every Add the delim char after every this number of characters
+/// @param[in] delim character to add
+/// @return A pointer to the dest string
+char *add_char_every(const char* source, char* dest, int every, char delim) noexcept {
+  int str_length = std::strlen(source);
+  int add_nr = str_length / every + (str_length % every != 0);
+  char *at = dest;
+  int chars_added;
+  for (int i=0; i<add_nr; i++) {
+    int from = every * i;
+    std::strncpy(at, source+from, every);
+    chars_added = (i+1) * every < str_length ? every : str_length - i * every;
+    at += chars_added;
+    *at = delim;
+    ++at;
+  }
+  *at = '\0';
+
+  return dest;
+}
+
+char *decode_message(const char* message) noexcept {
 
   char buf[32];
 
   // Find the start of the block. This is usually BF=[B64....];
-  char *start = std::strstr(message, "B64");
+  const char *start = std::strstr(message, "B64");
   if (!start) {
     fprintf(stderr, "[ERROR][%s] Failed to decode message; could not find start of block \"B64\" (traceback: %s)\n", date_str(buf), __func__);
-    return 1;
+    return nullptr;
   }
   // skip "B64" part
   start += 3;
 
   // Find the end of the block, aka the ';' character
-  char *end = start;
+  const char *end = start;
   while (*end && *end != ';') ++end;
   if (!*end) {
     fprintf(stderr, "[ERROR][%s] Failed to decode message; could not find end of block \";\" (traceback: %s)\n", date_str(buf), __func__);
-    return 1;
+    return nullptr;
   }
+  
+  // length of block (without the semicolon)
+  int block_sz = end - start;
 
   // check the block size
-  if (end - start < 10) {
+  if (block_sz < 100) {
     fprintf(stderr, "[ERROR][%s] Failed to decode message; block too small (traceback: %s)\n", date_str(buf),  __func__);
-    return 1;
+    return nullptr;
   }
 
+  // create a copy of the encoded string where a newline character is added 
+  // after every 64 chars
+  /* allocate str_wnl */
+  int new_str_sz = std::bit_ceil(block_sz + (block_sz/64) + 2);
+  char *str_wnl = new char[new_str_sz];
+  std::memset(str_wnl, '\0', new_str_sz);
+  add_char_every(message, str_wnl, 64, '\n'); /* encoded compressed string */
+  printf("[DEBUG][%s] Info on message manipulation: Size allocated for newline augmentation: %d (traceback: %s)\n", date_str(buf), new_str_sz, __func__);
+
+  // decode message from base64
+  /* allocate decoded */
+  char *decoded = new char[std::strlen(str_wnl)+1];
+  decoded = unbase64(str_wnl, decoded); /* decoded from base64 */
+  printf("[DEBUG][%s] Info on message manipulation: Size allocated for base64 decoding: %d (traceback: %s)\n", date_str(buf), std::strlen(str_wnl)+1, __func__);
+  
+  // decompress from bzip2
+  char *str_message = str_buffer_long;
+  unsigned int str_message_length = 0;
+  uncompress_bz2_string(decoded, str_message, str_message_length); /* decoded and uncompressed */
+
+  // Find location of first '='. then step back 8 characters. This is the
+  // true start of the string
+  int error = 0;
+  char *nstart = std::strchr(str_message, '=');
+  if (!nstart || (nstart - str_message >= 8) ) {
+    fprintf(stderr,
+            "[ERROR][%s] failed to decode/decompress Aristarchos message!"
+            "failed to find \'=\' sign in msg! (traceback: %s)\n",
+            date_str(buf), __func__);
+    error = 1;
+  }
+  nstart -= 8;
+
+  // add newlines after every 80 chars
+  if (!error) {
+    if (new_str_sz < std::strlen(nstart)+2) {
+      block_sz = std::strlen(nstart);
+      new_str_sz = std::bit_ceil(block_sz + (block_sz/64) + 2);
+      delete[] str_wnl;
+      str_wnl = new char[new_str_sz];
+    }
+    std::memset(str_wnl, '\0', new_str_sz);
+    add_char_every(nstart, str_wnl, 80, '\n');
+  }
+
+  // deallocate memory
+  delete[] str_wnl;
+  delete[] decoded;
+
+  return error ? nullptr : nstart;
 }
 
 /// @brief Decompress a bzip2 string
