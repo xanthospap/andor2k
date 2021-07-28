@@ -1,18 +1,18 @@
 #include "aristarchos.hpp"
 #include "andor2k.hpp"
 #include "cpp_socket.hpp"
+#include <bit>
 #include <bzlib.h>
 #include <chrono>
 #include <cstdio>
-#include <cstring>
 #include <cstdlib>
-#include <thread>
-#include <openssl/sha.h>
-#include <openssl/hmac.h>
-#include <openssl/evp.h>
+#include <cstring>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>
-#include <bit>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
+#include <openssl/sha.h>
+#include <thread>
 
 using andor2k::ClientSocket;
 using andor2k::Socket;
@@ -20,28 +20,43 @@ using andor2k::Socket;
 /// @brief a pretty big char buffer for bzip2 decompressing
 char str_buffer_long[ARISTARCHOS_DECODE_BUFFER_SIZE];
 
+/// @brief for ceil_power2 we need the following to hold:
+static_assert(sizeof(unsigned int) == 4);
+
+/// @brief Compute the nearest power of two, not less than v
+unsigned int ceil_power2(unsigned int v) noexcept {
+  v--;
+  v |= v >> 1;
+  v |= v >> 2;
+  v |= v >> 4;
+  v |= v >> 8;
+  v |= v >> 16;
+  v++;
+  return v;
+}
+
 /// @brief  base64 decode a given string
-/// This function will use the SSL BIO lib to decode a string in base64 
+/// This function will use the SSL BIO lib to decode a string in base64
 /// encryption format.
 /// @param[in] source string to decode; must be null terminated
 /// @param[out] decoded buffer to place the decoded message; must be at least
 ///             of the same size as the input string
 /// @return a pointer to decoded (the null terminated decoded string)
-char *unbase64(const char *source, char* decoded) noexcept {
+char *unbase64(const char *source, char *decoded) noexcept {
   BIO *b64, *bmem;
- 
+
   int length = std::strlen(source);
   std::memset(decoded, '\0', length + 1);
- 
+
   // char* str = std::strdup(source);
-  char *str = new char[length+1];
-  std::memset(str, '\0', length+1);
+  char *str = new char[length + 1];
+  std::memset(str, '\0', length + 1);
   std::strcpy(str, source);
 
   b64 = BIO_new(BIO_f_base64());
   bmem = BIO_new_mem_buf(str, length);
   bmem = BIO_push(b64, bmem);
- 
+
   BIO_read(bmem, decoded, length);
   BIO_free_all(bmem);
 
@@ -58,7 +73,7 @@ char *unbase64(const char *source, char* decoded) noexcept {
 /// Original string [ab] of size 2, becomes: [ab+]
 /// Original string [abcdef] of size 6, becomes: [abcdef+]
 /// Original string [abcdefg] of size 7, becomes: [abcdef+g+]
-/// Original string [abcdefghijklmnopqrstuvwxy] of size 25, becomes: 
+/// Original string [abcdefghijklmnopqrstuvwxy] of size 25, becomes:
 /// [abcdef+ghijkl+mnopqr+stuvwx+y+]
 /// @param[in] source the original, null-terminated string
 /// @param[out] dest the resulting string; the size of the array must be large
@@ -66,15 +81,16 @@ char *unbase64(const char *source, char* decoded) noexcept {
 /// @param[in] every Add the delim char after every this number of characters
 /// @param[in] delim character to add
 /// @return A pointer to the dest string
-char *add_char_every(const char* source, char* dest, int every, char delim) noexcept {
+char *add_char_every(const char *source, char *dest, int every,
+                     char delim) noexcept {
   int str_length = std::strlen(source);
   int add_nr = str_length / every + (str_length % every != 0);
   char *at = dest;
   int chars_added;
-  for (int i=0; i<add_nr; i++) {
+  for (int i = 0; i < add_nr; i++) {
     int from = every * i;
-    std::strncpy(at, source+from, every);
-    chars_added = (i+1) * every < str_length ? every : str_length - i * every;
+    std::strncpy(at, source + from, every);
+    chars_added = (i + 1) * every < str_length ? every : str_length - i * every;
     at += chars_added;
     *at = delim;
     ++at;
@@ -84,14 +100,17 @@ char *add_char_every(const char* source, char* dest, int every, char delim) noex
   return dest;
 }
 
-char *decode_message(const char* message) noexcept {
+char *decode_message(const char *message) noexcept {
 
   char buf[32];
 
   // Find the start of the block. This is usually BF=[B64....];
   const char *start = std::strstr(message, "B64");
   if (!start) {
-    fprintf(stderr, "[ERROR][%s] Failed to decode message; could not find start of block \"B64\" (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; could not find start of "
+            "block \"B64\" (traceback: %s)\n",
+            date_str(buf), __func__);
     return nullptr;
   }
   // skip "B64" part
@@ -99,46 +118,62 @@ char *decode_message(const char* message) noexcept {
 
   // Find the end of the block, aka the ';' character
   const char *end = start;
-  while (*end && *end != ';') ++end;
+  while (*end && *end != ';')
+    ++end;
   if (!*end) {
-    fprintf(stderr, "[ERROR][%s] Failed to decode message; could not find end of block \";\" (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; could not find end of block "
+            "\";\" (traceback: %s)\n",
+            date_str(buf), __func__);
     return nullptr;
   }
-  
+
   // length of block (without the semicolon)
   int block_sz = end - start;
 
   // check the block size
   if (block_sz < 100) {
-    fprintf(stderr, "[ERROR][%s] Failed to decode message; block too small (traceback: %s)\n", date_str(buf),  __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; block too small (traceback: "
+            "%s)\n",
+            date_str(buf), __func__);
     return nullptr;
   }
 
-  // create a copy of the encoded string where a newline character is added 
+  // create a copy of the encoded string where a newline character is added
   // after every 64 chars
   /* allocate str_wnl */
-  int new_str_sz = std::bit_ceil(block_sz + (block_sz/64) + 2);
+  /* int new_str_sz = std::bit_ceil(block_sz + (block_sz / 64) + 2);
+   * unfortunately, only available in C++20
+   */
+  int approx_new_sz = block_sz + block_sz/64 + 2;
+  int new_str_sz = ceil_power2(approx_new_sz);
   char *str_wnl = new char[new_str_sz];
   std::memset(str_wnl, '\0', new_str_sz);
   add_char_every(message, str_wnl, 64, '\n'); /* encoded compressed string */
-  printf("[DEBUG][%s] Info on message manipulation: Size allocated for newline augmentation: %d (traceback: %s)\n", date_str(buf), new_str_sz, __func__);
+  printf("[DEBUG][%s] Info on message manipulation: Size allocated for newline "
+         "augmentation: %d (traceback: %s)\n",
+         date_str(buf), new_str_sz, __func__);
 
   // decode message from base64
   /* allocate decoded */
-  char *decoded = new char[std::strlen(str_wnl)+1];
+  char *decoded = new char[std::strlen(str_wnl) + 1];
   decoded = unbase64(str_wnl, decoded); /* decoded from base64 */
-  printf("[DEBUG][%s] Info on message manipulation: Size allocated for base64 decoding: %d (traceback: %s)\n", date_str(buf), std::strlen(str_wnl)+1, __func__);
-  
+  printf("[DEBUG][%s] Info on message manipulation: Size allocated for base64 "
+         "decoding: %lu (traceback: %s)\n",
+         date_str(buf), std::strlen(str_wnl) + 1, __func__);
+
   // decompress from bzip2
   char *str_message = str_buffer_long;
   unsigned int str_message_length = 0;
-  uncompress_bz2_string(decoded, str_message, str_message_length); /* decoded and uncompressed */
+  uncompress_bz2_string(decoded, str_message,
+                        str_message_length); /* decoded and uncompressed */
 
   // Find location of first '='. then step back 8 characters. This is the
   // true start of the string
   int error = 0;
   char *nstart = std::strchr(str_message, '=');
-  if (!nstart || (nstart - str_message >= 8) ) {
+  if (!nstart || (nstart - str_message >= 8)) {
     fprintf(stderr,
             "[ERROR][%s] failed to decode/decompress Aristarchos message!"
             "failed to find \'=\' sign in msg! (traceback: %s)\n",
@@ -149,11 +184,13 @@ char *decode_message(const char* message) noexcept {
 
   // add newlines after every 80 chars
   if (!error) {
-    if (new_str_sz < std::strlen(nstart)+2) {
-      block_sz = std::strlen(nstart);
-      new_str_sz = std::bit_ceil(block_sz + (block_sz/64) + 2);
+    approx_new_sz = std::strlen(nstart);
+    approx_new_sz += approx_new_sz/80 + 2;
+    if (new_str_sz < approx_new_sz) {
+      new_str_sz = ceil_power2(approx_new_sz);
       delete[] str_wnl;
       str_wnl = new char[new_str_sz];
+      printf("[DEBUG][%s] Note that we re-allocated memmory for adding newline characters in the 80y part case (traceback: %s)\n", date_str(buf), __func__);
     }
     std::memset(str_wnl, '\0', new_str_sz);
     add_char_every(nstart, str_wnl, 80, '\n');
@@ -273,21 +310,22 @@ int send_aristarchos_request(int delay_sec, const char *request, int need_reply,
 
   try {
     /* create and connect .... */
-        printf("[DEBUG][%s] Trying to connect to Aristarchos ...\n", date_str(buf));
-        ClientSocket client_socket(ARISTARCHOS_IP, ARISTARCHOS_PORT);
-        printf("[DEBUG][%s] Connection with Aristarchos established!\n", date_str(buf));
+    printf("[DEBUG][%s] Trying to connect to Aristarchos ...\n", date_str(buf));
+    ClientSocket client_socket(ARISTARCHOS_IP, ARISTARCHOS_PORT);
+    printf("[DEBUG][%s] Connection with Aristarchos established!\n",
+           date_str(buf));
 
-        /* send request */
-        error = client_socket.send(request);
-        if (error<0) {
+    /* send request */
+    error = client_socket.send(request);
+    if (error < 0) {
       fprintf(
           stderr,
           "[ERROR][%s] Failed sending command to Aristarchos (traceback: %s)\n",
           date_str(buf), __func__);
-        }
+    }
 
-        /* if we need to, get the reply */
-        if (need_reply) {
+    /* if we need to, get the reply */
+    if (need_reply) {
       std::memset(reply, '\0', ARISTARCHOS_SOCKET_BUFFER_SIZE);
       /* need this delay for the telescope. Could probably be shorter */
       std::this_thread::sleep_for(std::chrono::seconds{delay_sec});
@@ -298,7 +336,7 @@ int send_aristarchos_request(int delay_sec, const char *request, int need_reply,
                 "(traceback: %s)\n",
                 date_str(buf), __func__);
       }
-        }
+    }
 
   } catch (std::exception &e) {
     fprintf(stderr,
