@@ -197,7 +197,7 @@ char *decode_message(const char *message) noexcept {
          "decoding: %lu (traceback: %s)\n",
          date_str(buf), std::strlen(str_wnl) + 1, __func__);
   #ifdef DEBUG
-  printf("[DEBUG][%s] Allocated memmory for decoded of size: %d (traceback: %s)\n", date_str(buf), std::strlen(str_wnl) + 1, __func__);
+  printf("[DEBUG][%s] Allocated memmory for decoded of size: %lu (traceback: %s)\n", date_str(buf), std::strlen(str_wnl) + 1, __func__);
   printf("[DEBUG][%s] Block decoded from ubase64 and now is [%s] (traceback: %s)\n", date_str(buf), decoded, __func__);
   #endif
 
@@ -463,15 +463,17 @@ int decoded_str_to_header(const char *decoded_msg, std::vector<AristarchosHeader
   if (header_vec.capacity() < 100) header_vec.reserve(100);
 
   if (decoded_msg_sz < 100) {
-    fprintf("[ERROR][%s] Decoded message does not seem right! Size is too small (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr, "[ERROR][%s] Decoded message does not seem right! Size is too small (traceback: %s)\n", date_str(buf), __func__);
     return -1;
   }
 
   /* While the stream is full i.e. no EOF */
+  int max_hdrs = 1000, hdr_count=0;
   AristarchosHeader hdr;
   int error = 0;
-  const char* start = decoded_msg, *end;
-  while (!error) {
+  const char* start = decoded_msg;
+  const char *end;
+  while (*start && (!error && hdr_count<max_hdrs)) {
     
     end = std::strchr(start, '\n');
     if (end == nullptr) break;
@@ -482,7 +484,7 @@ int decoded_str_to_header(const char *decoded_msg, std::vector<AristarchosHeader
     printf("[DEBUG][%s] Parsing new header line: [%.*s] of size: %d (traceback: %s)\n", date_str(buf), substr_sz, start, substr_sz, __func__);
     #endif
 
-    bool is_header_line = true;    
+    bool is_header_line = true;
     if (substr_sz < 10) {
       fprintf(stderr, "[WRNNG][%s] Header line is too small (aka smaller than 10 chars); line skipped (traceback: %s)\n", date_str(buf), __func__);
       is_header_line = false;
@@ -505,18 +507,26 @@ int decoded_str_to_header(const char *decoded_msg, std::vector<AristarchosHeader
 
       // Value is the next batch up util the '/' character
       std::memset(hdr.val, '\0', 32);
-      char *vstop = std::strchr(start+8, '/');
-      if (!vstop) {
+      const char *vstop = std::strchr(start+8, '/');
+      if (vstop == nullptr) {
         fprintf(stderr, "[ERROR][%s] Failed to resolve header line! could not fins start of comment character. (traceback: %s)\n", date_str(buf), __func__);
         return -1;
       }
       std::strncpy(hdr.val, start+11, vstop - (start + 11));
 
       // The comment is the remainder
-      std::memset(hdr.comment, '\0', 80);
-      std::strncpy(hdr.comment, vstop+1, substr_sz - (vstop+1));
+      int remainder_sz = substr_sz - (vstop - start);
+      std::memset(hdr.comment, '\0', 64);
+      std::strncpy(hdr.comment, vstop+1, remainder_sz);
+
+      printf("[DEBUG][%s] Resolved Aristarchos header line: key:[%s] -> value:[%s] / comment:[%s] (traceback: %s)\n", date_str(buf), hdr.key, hdr.val, hdr.comment, __func__);
+
+      // push back the new resolved header
+      header_vec.emplace_back(hdr);
     }
 
-
+    start = end + 1;
   }
+
+  return 0;
 }
