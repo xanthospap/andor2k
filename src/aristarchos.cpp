@@ -36,6 +36,18 @@ unsigned int ceil_power2(unsigned int v) noexcept {
   return v;
 }
 
+/// @brief Right trim a string
+char *rtrim(char* str) noexcept {                                               
+  char *top = str;                                                              
+  int sz = std::strlen(str) - 1;                                                
+  while (sz >= 0) {                                                             
+    if (str[sz] != ' ') break;                                                  
+    str[sz] = '\0';                                                             
+    --sz;                                                                       
+  }                                                                              
+  return top;                                                                    
+} 
+
 /// @brief  base64 decode a given string
 /// This function will use the SSL BIO lib to decode a string in base64
 /// encryption format.
@@ -103,8 +115,8 @@ char *add_char_every(const char *source, char *dest, int every,
 
 /// @brief Decode/unzip the string got from Aristarchos after issuing a 0003RD;
 /// When sending the command 0003RD; to Aristarchos, we get a string as reply.
-/// This reply is ubase64 encoded and bzip2 compressed; this function will 
-/// decode and decompress the reply string and format it as a readable string, 
+/// This reply is ubase64 encoded and bzip2 compressed; this function will
+/// decode and decompress the reply string and format it as a readable string,
 /// which is returned.
 /// @param[in] message the raw response as supplied from Aristarchos
 /// @return A string holding the reply in human readable format; note that
@@ -117,10 +129,13 @@ char *decode_message(const char *message) noexcept {
 
   char buf[32]; /* for datetime string */
 
-  #ifdef DEBUG
-  printf("[DEBUG][%s] Started decoding message got from Aristarchos (traceback: %s)\n", date_str(buf), __func__);
-  printf("[DEBUG][%s] Message to decode is: [%s] (traceback: %s)\n", date_str(buf), message, __func__);
-  #endif
+#ifdef DEBUG
+  printf("[DEBUG][%s] Started decoding message got from Aristarchos "
+         "(traceback: %s)\n",
+         date_str(buf), __func__);
+  printf("[DEBUG][%s] Message to decode is: [%s] (traceback: %s)\n",
+         date_str(buf), message, __func__);
+#endif
 
   /* Find the start of the block. This is usually BF=[B64....]; */
   const char *hstart = std::strstr(message, "B64");
@@ -158,16 +173,19 @@ char *decode_message(const char *message) noexcept {
     return nullptr;
   }
 
-  /* copy the block into a new string 
+  /* copy the block into a new string
    * allocate memory for header_block_encoded
    */
   char *header_block_encoded = new char[block_sz + 1];
-  std::memset(header_block_encoded, '\0', block_sz+1);
+  std::memset(header_block_encoded, '\0', block_sz + 1);
   std::strncpy(header_block_encoded, hstart, block_sz);
-  #ifdef DEBUG
-  printf("[DEDUB][%s] Allocated memmory for header_block_encoded of size: %d (traceback: %s)\n", date_str(buf), block_sz+1, __func__);
-  printf("[DEBUG][%s] Encoded header block: [%s] (traceback %s)\n", date_str(buf), header_block_encoded, __func__);
-  #endif
+#ifdef DEBUG
+  printf("[DEDUB][%s] Allocated memmory for header_block_encoded of size: %d "
+         "(traceback: %s)\n",
+         date_str(buf), block_sz + 1, __func__);
+  printf("[DEBUG][%s] Encoded header block: [%s] (traceback %s)\n",
+         date_str(buf), header_block_encoded, __func__);
+#endif
 
   /* create a copy of the encoded string where a newline character is added
    * after every 64 chars. allocate str_wnl.
@@ -175,7 +193,7 @@ char *decode_message(const char *message) noexcept {
    * (aka the compressed/encoded header block) with newlines after every 64
    * characters
    */
-  int approx_new_sz = block_sz + block_sz/64 + 2;
+  int approx_new_sz = block_sz + block_sz / 64 + 2;
   int new_str_sz = ceil_power2(approx_new_sz);
   char *str_wnl = new char[new_str_sz];
   std::memset(str_wnl, '\0', new_str_sz);
@@ -183,10 +201,14 @@ char *decode_message(const char *message) noexcept {
   printf("[DEBUG][%s] Info on message manipulation: Size allocated for newline "
          "augmentation: %d (traceback: %s)\n",
          date_str(buf), new_str_sz, __func__);
-  #ifdef DEBUG
-  printf("[DEBUG][%s] Allocated memmory for str_wnl of size: %d (traceback: %s)\n", date_str(buf), new_str_sz, __func__);
-  printf("[DEBUG][%s] Encoded header block with new lines: [%s] (traceback %s)\n", date_str(buf), str_wnl, __func__);
-  #endif
+#ifdef DEBUG
+  printf(
+      "[DEBUG][%s] Allocated memmory for str_wnl of size: %d (traceback: %s)\n",
+      date_str(buf), new_str_sz, __func__);
+  printf(
+      "[DEBUG][%s] Encoded header block with new lines: [%s] (traceback %s)\n",
+      date_str(buf), str_wnl, __func__);
+#endif
 
   /* decode message from base64. the new, dedoced string is stored in decoded
    * string. allocate memory for decoded.
@@ -196,26 +218,34 @@ char *decode_message(const char *message) noexcept {
   printf("[DEBUG][%s] Info on message manipulation: Size allocated for base64 "
          "decoding: %lu (traceback: %s)\n",
          date_str(buf), std::strlen(str_wnl) + 1, __func__);
-  #ifdef DEBUG
-  printf("[DEBUG][%s] Allocated memmory for decoded of size: %lu (traceback: %s)\n", date_str(buf), std::strlen(str_wnl) + 1, __func__);
-  printf("[DEBUG][%s] Block decoded from ubase64 and now is [%s] (traceback: %s)\n", date_str(buf), decoded, __func__);
-  #endif
-
+#ifdef DEBUG
+  printf("[DEBUG][%s] Allocated memmory for decoded of size: %lu (traceback: "
+         "%s)\n",
+         date_str(buf), std::strlen(str_wnl) + 1, __func__);
+  printf("[DEBUG][%s] Block decoded from ubase64 and now is [%s] (traceback: "
+         "%s)\n",
+         date_str(buf), decoded, __func__);
+#endif
 
   /* decompress (the non-base64 anymore string) from bzip2 format. resulting
-   * string is stored in str_message. the reulting string is stored in the 
+   * string is stored in str_message. the reulting string is stored in the
    * str_buffer_long buffer, so no new memory is allocated. The string should
    * now be in a readable format
    */
   char *str_message = str_buffer_long;
   unsigned int str_message_length = 0;
-  uncompress_bz2_string(decoded, str_message,
-                        str_message_length);
-  #ifdef DEBUG
-  printf("[DEBUG][%s] Using buffer of size: %d bytes to un-bzip2 decoded string(traceback: %s)\n", date_str(buf), ARISTARCHOS_DECODE_BUFFER_SIZE, __func__);
-  printf("[DEBUG][%s] Block decoded and unziped and now is [%s] (traceback: %s)\n", date_str(buf), str_message, __func__);
-  printf("[DEBUG][%s] Note that the size of the uncompressed block is: %d bytes (traceback: %s)\n", date_str(buf), str_message_length, __func__);
-  #endif
+  uncompress_bz2_string(decoded, str_message, str_message_length);
+#ifdef DEBUG
+  printf("[DEBUG][%s] Using buffer of size: %d bytes to un-bzip2 decoded "
+         "string(traceback: %s)\n",
+         date_str(buf), ARISTARCHOS_DECODE_BUFFER_SIZE, __func__);
+  printf(
+      "[DEBUG][%s] Block decoded and unziped and now is [%s] (traceback: %s)\n",
+      date_str(buf), str_message, __func__);
+  printf("[DEBUG][%s] Note that the size of the uncompressed block is: %d "
+         "bytes (traceback: %s)\n",
+         date_str(buf), str_message_length, __func__);
+#endif
 
   /* Find location of first '='. then step back 8 characters. This is the
    * true start of the string
@@ -231,27 +261,34 @@ char *decode_message(const char *message) noexcept {
   }
   nstart -= 8;
 
-  /* add newlines after every 80 chars to the string starting at nstart (note 
+  /* add newlines after every 80 chars to the string starting at nstart (note
    * that nstart points somwhere in the str_message buffer).
    */
   if (!error) {
     approx_new_sz = std::strlen(nstart);
-    approx_new_sz += approx_new_sz/80 + 2;
+    approx_new_sz += approx_new_sz / 80 + 2;
     if (new_str_sz < approx_new_sz) {
-      #ifdef DEBUG
-      printf("[DEBUG][%s] Re-allocating memmory for final string with newlines; lengtho of %d was not enough, going for %d (traceback: %s)\n", date_str(buf), new_str_sz, approx_new_sz, __func__);
-      #endif
+#ifdef DEBUG
+      printf(
+          "[DEBUG][%s] Re-allocating memmory for final string with newlines; "
+          "lengtho of %d was not enough, going for %d (traceback: %s)\n",
+          date_str(buf), new_str_sz, approx_new_sz, __func__);
+#endif
       new_str_sz = ceil_power2(approx_new_sz);
       delete[] str_wnl;
       str_wnl = new char[new_str_sz];
-      printf("[DEBUG][%s] Note that we re-allocated memmory for adding newline characters in the 80y part case (traceback: %s)\n", date_str(buf), __func__);
+      printf("[DEBUG][%s] Note that we re-allocated memmory for adding newline "
+             "characters in the 80y part case (traceback: %s)\n",
+             date_str(buf), __func__);
     }
     std::memset(str_wnl, '\0', new_str_sz);
     add_char_every(nstart, str_wnl, 80, '\n');
   }
-  #ifdef DEBUG
-  printf("[DEBUG][%s] We have reached the final header block, which is: [%s] (traceback: %s)\n", date_str(buf), str_wnl, __func__);
-  #endif
+#ifdef DEBUG
+  printf("[DEBUG][%s] We have reached the final header block, which is: [%s] "
+         "(traceback: %s)\n",
+         date_str(buf), str_wnl, __func__);
+#endif
 
   /* deallocate memory */
   delete[] header_block_encoded;
@@ -453,50 +490,70 @@ char *generate_request_string(const char *request, char *command) noexcept {
   return nullptr;
 }
 
-int decoded_str_to_header(const char *decoded_msg, std::vector<AristarchosHeader>& header_vec) noexcept {
-  
+int decoded_str_to_header(const char *decoded_msg,
+                          std::vector<AristarchosHeader> &header_vec) noexcept {
+
   char buf[32]; /* for datetime string */
   int decoded_msg_sz = std::strlen(decoded_msg);
 
   /* clear vector and allocate capacity */
   header_vec.clear();
-  if (header_vec.capacity() < 100) header_vec.reserve(100);
+  if (header_vec.capacity() < 100)
+    header_vec.reserve(100);
 
   if (decoded_msg_sz < 100) {
-    fprintf(stderr, "[ERROR][%s] Decoded message does not seem right! Size is too small (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Decoded message does not seem right! Size is too "
+            "small (traceback: %s)\n",
+            date_str(buf), __func__);
     return -1;
   }
 
   /* While the stream is full i.e. no EOF */
-  int max_hdrs = 1000, hdr_count=0;
+  int max_hdrs = 1000, hdr_count = 0;
   AristarchosHeader hdr;
   int error = 0;
-  const char* start = decoded_msg;
+  const char *start = decoded_msg;
   const char *end;
-  while (*start && (!error && hdr_count<max_hdrs)) {
-    
+  while (*start && (!error && hdr_count < max_hdrs)) {
+
     end = std::strchr(start, '\n');
-    if (end == nullptr) break;
-    
+    if (end == nullptr) {
+      printf("[ERROR][%s] Cannont find next newline character! remaining string is [%s] (traceback: %s)\n", date_str(buf), start, __func__);
+      error = 1;
+      break;
+    }
+
     /* string to consider is [start,end) */
     int substr_sz = end - start;
-    #ifdef DEBUG
-    printf("[DEBUG][%s] Parsing new header line: [%.*s] of size: %d (traceback: %s)\n", date_str(buf), substr_sz, start, substr_sz, __func__);
-    #endif
+#ifdef DEBUG
+    printf("[DEBUG][%s] Parsing new header line: [%.*s] of size: %d "
+           "(traceback: %s)\n",
+           date_str(buf), substr_sz, start, substr_sz, __func__);
+#endif
 
     bool is_header_line = true;
     if (substr_sz < 10) {
-      fprintf(stderr, "[WRNNG][%s] Header line is too small (aka smaller than 10 chars); line skipped (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[WRNNG][%s] Header line is too small (aka smaller than 10 "
+              "chars); line skipped (traceback: %s)\n",
+              date_str(buf), __func__);
       is_header_line = false;
     }
 
     if (substr_sz > 80 && is_header_line) {
-      fprintf(stderr, "[WRNNG][%s] Header line is too large (aka larger than 80 chars); line skipped (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[WRNNG][%s] Header line is too large (aka larger than 80 "
+              "chars); line skipped (traceback: %s)\n",
+              date_str(buf), __func__);
       is_header_line = false;
     }
 
-    if (*(start+8) != '=' && is_header_line) {
-      fprintf(stderr, "[WRNNG][%s] Expected \'=\' at 8th place, probably not a header line; line skipped (traceback: %s)\n", date_str(buf), __func__);
+    if (*(start + 8) != '=' && is_header_line) {
+      fprintf(stderr,
+              "[WRNNG][%s] Expected \'=\' at 8th place, probably not a header "
+              "line; line skipped (traceback: %s)\n",
+              date_str(buf), __func__);
       is_header_line = false;
     }
 
@@ -507,19 +564,24 @@ int decoded_str_to_header(const char *decoded_msg, std::vector<AristarchosHeader
 
       // Value is the next batch up util the '/' character
       std::memset(hdr.val, '\0', 32);
-      const char *vstop = std::strchr(start+8, '/');
+      const char *vstop = std::strchr(start + 8, '/');
       if (vstop == nullptr) {
-        fprintf(stderr, "[ERROR][%s] Failed to resolve header line! could not fins start of comment character. (traceback: %s)\n", date_str(buf), __func__);
+        fprintf(stderr,
+                "[ERROR][%s] Failed to resolve header line! could not fins "
+                "start of comment character. (traceback: %s)\n",
+                date_str(buf), __func__);
         return -1;
       }
-      std::strncpy(hdr.val, start+11, vstop - (start + 11));
+      std::strncpy(hdr.val, start + 11, vstop - (start + 11));
 
       // The comment is the remainder
       int remainder_sz = substr_sz - (vstop - start);
       std::memset(hdr.comment, '\0', 64);
-      std::strncpy(hdr.comment, vstop+1, remainder_sz);
+      std::strncpy(hdr.comment, vstop + 1, remainder_sz);
 
-      printf("[DEBUG][%s] Resolved Aristarchos header line: key:[%s] -> value:[%s] / comment:[%s] (traceback: %s)\n", date_str(buf), hdr.key, hdr.val, hdr.comment, __func__);
+      printf("[DEBUG][%s] Resolved Aristarchos header line: key:[%s] -> "
+             "value:[%s] / comment:[%s] (traceback: %s)\n",
+             date_str(buf), hdr.key, hdr.val, hdr.comment, __func__);
 
       // push back the new resolved header
       header_vec.emplace_back(hdr);

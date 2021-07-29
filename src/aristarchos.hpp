@@ -1,6 +1,5 @@
 #include <vector>
 
-
 /// @brief Size of command buffer to be sent to Aristarchos
 constexpr int ARISTARCHOS_COMMAND_MAX_CHARS = 64;
 
@@ -18,9 +17,9 @@ constexpr int ARISTARCHOS_SOCKET_BUFFER_SIZE = 1024;
 constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
 
 struct AristarchosHeader {
-    char key[16];
-    char val[32];
-    char comment[64];
+  char key[16];
+  char val[32];
+  char comment[64];
 };
 
 char *generate_request_string(const char *request, char *command) noexcept;
