@@ -22,6 +22,9 @@ struct AristarchosHeader {
   char comment[64];
 };
 
+int decoded_str_to_header(const char *decoded_msg,
+                          std::vector<AristarchosHeader> &header_vec) noexcept;
+
 char *generate_request_string(const char *request, char *command) noexcept;
 
 int send_aristarchos_request(int delay_sec, const char *request, int need_reply,

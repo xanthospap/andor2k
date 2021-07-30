@@ -51,24 +51,111 @@ char *rtrim(char* str) noexcept {
   return top;                                                                    
 }
 
-int get_aristarchso_headers(int num_tries) noexcept {
+int get_aristarchos_headers(int num_tries) noexcept {
   char buf[32];
   int ctry = 0;
   int error = 1;
+  char *decoded_headers = nullptr;
 
   printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
   while (ctry < num_tries && error) {
     
+    error = 0;
+
     char* request = generate_request_string("callExpStart", str_buffer_short);
-    if (request == nullptr) {
-      fprintf(stderr, "[ERROR][%s] Invalid command to send to Aristarchos! (traceback: %s)\n", date_str(buf), __func__);
-      error = 10;
-    }
-    if (request) {
+    if (request != nullptr && !error) {
       error = send_aristarchos_request(1, request, 0, nullptr);
+      if (error) {
+        fprintf(stderr,
+                "[ERROR][%s] (%d/%d) Failed attempt to send request to "
+                "Aristarchos; request was: [%s] (traceback: %s)\n",
+                date_str(buf), ctry + 1, num_tries, request, __func__);
+      } else {
+        std::this_thread::sleep_for(std::chrono::seconds{8});
+      }
     }
 
+    request = generate_request_string("getHeaderStatus", str_buffer_short);
+    if (request!=nullptr && !error) {
+      error = send_aristarchos_request(1, request, 1, str_buffer_long);
+      if (error)
+        fprintf(stderr,
+                "[ERROR][%s] (%d/%d) Failed attempt to send/receive request to "
+                "Aristarchos; request was: [%s] (traceback: %s)\n",
+                date_str(buf), ctry + 1, num_tries, request, __func__);
+    }
+    
+    request = generate_request_string("callExpStop", str_buffer_short);
+    if (request!=nullptr && !error) {
+      error = send_aristarchos_request(1, request, 0, nullptr);
+      if (error) {
+        fprintf(stderr,
+                "[ERROR][%s] (%d/%d) Failed attempt to send request to "
+                "Aristarchos; request was: [%s] (traceback: %s)\n",
+                date_str(buf), ctry + 1, num_tries, request, __func__);
+      } else {
+        std::this_thread::sleep_for(std::chrono::seconds{2});
+      }
+    }
+
+    request = generate_request_string("grabHeader", str_buffer_short);
+    if (request!=nullptr && !error) {
+      error = send_aristarchos_request(10, request, 1, str_buffer_long);
+      if (error)
+        fprintf(stderr,
+                "[ERROR][%s] (%d/%d) Failed attempt to send/receive request to "
+                "Aristarchos; request was: [%s] (traceback: %s)\n",
+                date_str(buf), ctry + 1, num_tries, request, __func__);
+    }
+
+    /* if no error occured, we now have the bziped, ubase64 encoded heades
+     * (Aristarchos replied) in the str_buffer_long buffer. It needs to be
+     * uncompressed and unencrypted
+     */
+    if (!error) {
+      printf("[DEBUG][%s] (%d/%d) Aristarchos replied; now trying to decode the "
+             "headers got back\n",
+             date_str(buf), ctry+1, num_tries);
+      /* note that the following function will, at some point, change the
+       * contents of str_buffer_long; do not expect to find the reply string
+       * there after the end of the call
+       */
+      decoded_headers = decode_message(str_buffer_long);
+      if (decoded_headers == nullptr || std::strlen(decoded_headers) < 100) {
+        fprintf(stderr,
+                "[ERROR][%s] (%d/%d) Something went wrong while decoding "
+                "Aristarchos reply/headers; decoding failed (traceback: %s)\n",
+                date_str(buf), ctry + 1, num_tries, __func__);
+        error = 2;
+      } else {
+        printf("[DEBUG][%s] Aristarchos headers decoded\n", __func__);
+      }
+    }
+
+    ++ctry;
+  } /* exit loop */
+
+  /* if we decoded the headers, extract them to a vector */
+  if (!error) {
+    printf("[DEBUG][%s] Splitting decoded headers to match FITS headers\n",
+           date_str(buf));
+    std::vector<AristarchosHeader> ah_vec;
+    error = decoded_str_to_header(decoded_headers, ah_vec);
+    if (error) {
+      fprintf(
+          stderr,
+          "[ERROR][%s] Failed to translate decoded headers to FITS format!\n",
+          date_str(buf));
+      error = 20;
+    }
+  } else {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to get/decode Aristarchos headers after %d "
+            "tries; giving up! (traceback: %s)\n",
+            date_str(buf), num_tries, __func__);
   }
+
+  return error;
 }
 
 /// @brief  base64 decode a given string
