@@ -20,6 +20,9 @@ using andor2k::Socket;
 /// @brief a pretty big char buffer for bzip2 decompressing
 char str_buffer_long[ARISTARCHOS_DECODE_BUFFER_SIZE];
 
+/// @brief
+char str_buffer_short[ARISTARCHOS_SOCKET_BUFFER_SIZE];
+
 /// @brief for ceil_power2 we need the following to hold:
 static_assert(sizeof(unsigned int) == 4);
 
@@ -46,7 +49,27 @@ char *rtrim(char* str) noexcept {
     --sz;                                                                       
   }                                                                              
   return top;                                                                    
-} 
+}
+
+int get_aristarchso_headers(int num_tries) noexcept {
+  char buf[32];
+  int ctry = 0;
+  int error = 1;
+
+  printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
+  while (ctry < num_tries && error) {
+    
+    char* request = generate_request_string("callExpStart", str_buffer_short);
+    if (request == nullptr) {
+      fprintf(stderr, "[ERROR][%s] Invalid command to send to Aristarchos! (traceback: %s)\n", date_str(buf), __func__);
+      error = 10;
+    }
+    if (request) {
+      error = send_aristarchos_request(1, request, 0, nullptr);
+    }
+
+  }
+}
 
 /// @brief  base64 decode a given string
 /// This function will use the SSL BIO lib to decode a string in base64

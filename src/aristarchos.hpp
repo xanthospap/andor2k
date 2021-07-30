@@ -36,3 +36,5 @@ char *add_char_every(const char *source, char *dest, int every,
                      char delim) noexcept;
 
 char *decode_message(const char *message) noexcept;
+
+const char* rtrim(const char *str) noexcept;
