@@ -51,11 +51,12 @@ char *rtrim(char* str) noexcept {
   return top;                                                                    
 }
 
-int get_aristarchos_headers(int num_tries) noexcept {
+int get_aristarchos_headers(int num_tries, std::vector<AristarchosHeader>& headers) noexcept {
   char buf[32];
   int ctry = 0;
   int error = 1;
   char *decoded_headers = nullptr;
+  if (!headers.empty()) headers.clear();
 
   printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
   while (ctry < num_tries && error) {
@@ -139,8 +140,7 @@ int get_aristarchos_headers(int num_tries) noexcept {
   if (!error) {
     printf("[DEBUG][%s] Splitting decoded headers to match FITS headers\n",
            date_str(buf));
-    std::vector<AristarchosHeader> ah_vec;
-    error = decoded_str_to_header(decoded_headers, ah_vec);
+    error = decoded_str_to_header(decoded_headers, headers);
     if (error) {
       fprintf(
           stderr,
@@ -155,6 +155,8 @@ int get_aristarchos_headers(int num_tries) noexcept {
             date_str(buf), num_tries, __func__);
   }
 
+  printf("[DEBUG][%s] Actual number of headers decoded is :%d\n", date_str(buf),
+         (int)headers.size());
   return error;
 }
 
@@ -677,7 +679,7 @@ int decoded_str_to_header(const char *decoded_msg,
       const char *vstop = std::strchr(start + 8, '/');
       if (vstop == nullptr) {
         fprintf(stderr,
-                "[ERROR][%s] Failed to resolve header line! could not fins "
+                "[ERROR][%s] Failed to resolve header line! could not find "
                 "start of comment character. (traceback: %s)\n",
                 date_str(buf), __func__);
         return -1;

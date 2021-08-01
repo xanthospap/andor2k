@@ -57,7 +57,7 @@ pkginclude_HEADERS = \
 ## ----------------------------
 ##
 dist_libhelmosandor2k_la_SOURCES = \
-        andor2k.cpp \
+    andor2k.cpp \
 	cpp_socket.cpp \
 	cmd_parser.cpp \
 	andor_tools.cpp \
@@ -70,7 +70,7 @@ dist_libhelmosandor2k_la_SOURCES = \
 	get_acquisition.cpp \
 	set_acquisition.cpp \
 	resolve_image_parameters.cpp \
-        aristarchos.cpp
+    aristarchos.cpp
 
 #andor2k_SOURCES = andor2k.cpp
 #andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src

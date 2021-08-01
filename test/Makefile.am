@@ -24,12 +24,12 @@ MCXXFLAGS = \
 testClientSocket_SOURCES   = test_client_socket.cpp
 testClientSocket_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
 #testClientSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -lcfitsio -lm
-testClientSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lm
+testClientSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lpthread -lm
 
 testServerSocket_SOURCES   = test_server_socket.cpp
 testServerSocket_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
 #testServerSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -lcfitsio -lm
-testServerSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lm
+testServerSocket_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lpthread -lm
 
 testCmdParser_SOURCES   = test_cmd_parser.cpp
 testCmdParser_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
