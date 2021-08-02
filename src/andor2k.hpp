@@ -131,4 +131,6 @@ int setup_acquisition(const AndorParameters *params, int &width, int &height,
 
 int get_acquisition(const AndorParameters *params, int xnumpixels,
                     int ynumpixels, at_32 *img_buffer) noexcept;
+
+int set_fastest_recomended_vh_speeds(float& vspeed, float& hspeed) noexcept;
 #endif

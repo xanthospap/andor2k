@@ -51,7 +51,7 @@ char *rtrim(char* str) noexcept {
   return top;                                                                    
 }
 
-int get_aristarchos_headers(int num_tries, std::vector<AristarchosHeader>& headers) noexcept {
+int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noexcept {
   char buf[32];
   int ctry = 0;
   int error = 1;
@@ -603,7 +603,7 @@ char *generate_request_string(const char *request, char *command) noexcept {
 }
 
 int decoded_str_to_header(const char *decoded_msg,
-                          std::vector<AristarchosHeader> &header_vec) noexcept {
+                          std::vector<FitsHeader> &header_vec) noexcept {
 
   char buf[32]; /* for datetime string */
   int decoded_msg_sz = std::strlen(decoded_msg);
@@ -623,7 +623,7 @@ int decoded_str_to_header(const char *decoded_msg,
 
   /* While the stream is full i.e. no EOF */
   int max_hdrs = 1000, hdr_count = 0;
-  AristarchosHeader hdr;
+  FitsHeader hdr;
   int error = 0;
   const char *start = decoded_msg;
   const char *end;
@@ -671,11 +671,11 @@ int decoded_str_to_header(const char *decoded_msg,
 
     if (is_header_line) {
       // Keyword is the first 8 characters
-      std::memset(hdr.key, '\0', 16);
+      std::memset(hdr.key, '\0', FITS_HEADER_KEYNAME_CHARS);
       std::strncpy(hdr.key, start, 8);
 
       // Value is the next batch up util the '/' character
-      std::memset(hdr.val, '\0', 32);
+      std::memset(hdr.val, '\0', FITS_HEADER_VALUE_CHARS);
       const char *vstop = std::strchr(start + 8, '/');
       if (vstop == nullptr) {
         fprintf(stderr,
@@ -688,7 +688,7 @@ int decoded_str_to_header(const char *decoded_msg,
 
       // The comment is the remainder
       int remainder_sz = substr_sz - (vstop - start);
-      std::memset(hdr.comment, '\0', 64);
+      std::memset(hdr.comment, '\0', FITS_HEADER_COMMENT_CHARS);
       std::strncpy(hdr.comment, vstop + 1, remainder_sz);
 
       printf("[DEBUG][%s] Resolved Aristarchos header line: key:[%s] -> "

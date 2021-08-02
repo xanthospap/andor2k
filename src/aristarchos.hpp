@@ -16,14 +16,24 @@ constexpr int ARISTARCHOS_SOCKET_BUFFER_SIZE = 1024;
 /// @todo is this too large?
 constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
 
-struct AristarchosHeader {
-  char key[16];
-  char val[32];
-  char comment[64];
+/// @brief max character in FITS header keyword
+constexpr int FITS_HEADER_KEYNAME_CHARS = 16;
+
+/// @brief max character in FITS header value
+constexpr int FITS_HEADER_VALUE_CHARS = 32;
+
+/// @brief max character in FITS header comment
+constexpr int FITS_HEADER_COMMENT_CHARS = 64;
+
+/// @brief Generic FITS header struct
+struct FitsHeader {
+  char key[FITS_HEADER_KEYNAME_CHARS];
+  char val[FITS_HEADER_VALUE_CHARS];
+  char comment[FITS_HEADER_COMMENT_CHARS];
 };
 
 int decoded_str_to_header(const char *decoded_msg,
-                          std::vector<AristarchosHeader> &header_vec) noexcept;
+                          std::vector<FitsHeader> &header_vec) noexcept;
 
 char *generate_request_string(const char *request, char *command) noexcept;
 

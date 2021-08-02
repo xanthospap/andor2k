@@ -7,6 +7,7 @@
 /// The function will:
 /// * setup the Read Mode
 /// * setup the Acquisition Mode
+/// * set vertical and horizontal shift speeds
 /// * initialize the Shutter
 /// * compute image dimensions (aka pixels in width and height)
 /// * allocate memory for (temporarily) storing image data
@@ -48,6 +49,15 @@ int setup_acquisition(const AndorParameters *params, int &width, int &height,
   if (setup_acquisition_mode(params)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to set acquisition mode! (traceback: %s)\n",
+            date_str(buf), __func__);
+    return 10;
+  }
+
+  /* set vertical and horizontal shift speeds */
+  float vspeed, hspeed;
+  if (set_fastest_recomended_vh_speeds(vspeed, hspeed)) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to set shift speed(s)! (traceback: %s)\n",
             date_str(buf), __func__);
     return 10;
   }

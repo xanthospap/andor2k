@@ -11,6 +11,8 @@
 #include <ctime>
 #include <fstream>
 #include <thread>
+#include <pthread.h>
+#include <unistd.h>
 
 using andor2k::ServerSocket;
 using andor2k::Socket;
@@ -19,6 +21,9 @@ using namespace std::chrono_literals;
 /* ANDOR2K RELATED CONSTANTS */
 constexpr int ANDOR_MIN_TEMP = -120;
 constexpr int ANDOR_MAX_TEMP = 10;
+
+/* signal abort */
+int abort_set = 0;
 
 /* buffers and constants */
 constexpr int SOCKET_PORT = 8080;
@@ -325,7 +330,6 @@ void chat(const Socket &socket) {
     socket.recv(buffer, 1024);
 
     // print client message
-    // printf("Got string from client: %s", buffer);
     int answr = resolve_command();
     if (answr == -100) {
       printf(
@@ -335,11 +339,6 @@ void chat(const Socket &socket) {
     }
 
     // get message for client
-    // printf("Enter message for client:");
-    // int n = 0;
-    // std::memset(buffer, '\0', sizeof(buffer));
-    // while ((buffer[n++] = getchar()) != '\n')
-    //  ;
     buffer[0] = '0';
     buffer[1] = '\0';
     if (answr)

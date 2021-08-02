@@ -70,6 +70,7 @@ dist_libhelmosandor2k_la_SOURCES = \
 	get_acquisition.cpp \
 	set_acquisition.cpp \
 	resolve_image_parameters.cpp \
+        vhsspeed.cpp \
     aristarchos.cpp
 
 #andor2k_SOURCES = andor2k.cpp
