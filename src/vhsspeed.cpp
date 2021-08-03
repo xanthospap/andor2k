@@ -16,22 +16,31 @@
 /// @note Note that while the ANDOR2K SDK has a function to get the recommended
 /// vertical shift speed (aka GetFastestRecommendedVSSpeed), no such function
 /// is available for the horizontal speed.
-int set_fastest_recomended_vh_speeds(float& vspeed, float& hspeed) noexcept {
+/// @todo does this need the SetFrameTransferMode to be set to 1?
+int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept {
   char buf[32];
- 
-  /* set vertical shift speed to fastest recommended */ 
+
+  /* set vertical shift speed to fastest recommended */
   int index;
   unsigned int error = GetFastestRecommendedVSSpeed(&index, &vspeed);
   if (error != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR][%s] Failed to get fastest recommended VSSpeed (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to get fastest recommended VSSpeed (traceback: "
+            "%s)\n",
+            date_str(buf), __func__);
     return 1;
   } else {
     error = SetVSSpeed(index);
     if (error != DRV_SUCCESS) {
-      fprintf(stderr, "[ERROR][%s] Failed to set fastest recommended VSSpeed (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to set fastest recommended VSSpeed "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
       return 1;
     }
-    printf("[DEBUG][%s] Set Vertical Speed Shift to fastest recommended; that is %8.2f microseconds per pixel shift\n", date_str(buf), vspeed);
+    printf("[DEBUG][%s] Set Vertical Speed Shift to fastest recommended; that "
+           "is %8.2f microseconds per pixel shift\n",
+           date_str(buf), vspeed);
   }
 
   /* get horizontal speed shifts */
@@ -40,13 +49,17 @@ int set_fastest_recomended_vh_speeds(float& vspeed, float& hspeed) noexcept {
   /* note that the shift speeds are always returned fastest first */
   if (error == DRV_SUCCESS) {
     GetHSSpeed(0, 0, 0, &hspeed); /* get first speed, aka the fastest */
-    error = SetHSSpeed(0, 0); /* set the first speed, aka the fastest */
+    error = SetHSSpeed(0, 0);     /* set the first speed, aka the fastest */
   }
   if (error == DRV_SUCCESS) {
-    printf("[DEBUG][%s] Set Horizontal Shift Speed to fastest, that is %8.2ff microseconds per pixel shift\n", date_str(buf), hspeed);
+    printf("[DEBUG][%s] Set Horizontal Shift Speed to fastest, that is %8.2ff "
+           "microseconds per pixel shift\n",
+           date_str(buf), hspeed);
   } else {
-    fprintf(stderr, "[ERROR][%s] Failed to set fastest HSSpeed (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to set fastest HSSpeed (traceback: %s)\n",
+            date_str(buf), __func__);
   }
 
-  return ( error == DRV_SUCCESS ? 0 : 1 );
+  return (error == DRV_SUCCESS ? 0 : 1);
 }

@@ -40,30 +40,33 @@ unsigned int ceil_power2(unsigned int v) noexcept {
 }
 
 /// @brief Right trim a string
-char *rtrim(char* str) noexcept {                                               
-  char *top = str;                                                              
-  int sz = std::strlen(str) - 1;                                                
-  while (sz >= 0) {                                                             
-    if (str[sz] != ' ') break;                                                  
-    str[sz] = '\0';                                                             
-    --sz;                                                                       
-  }                                                                              
-  return top;                                                                    
+char *rtrim(char *str) noexcept {
+  char *top = str;
+  int sz = std::strlen(str) - 1;
+  while (sz >= 0) {
+    if (str[sz] != ' ')
+      break;
+    str[sz] = '\0';
+    --sz;
+  }
+  return top;
 }
 
-int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noexcept {
+int get_aristarchos_headers(int num_tries,
+                            std::vector<FitsHeader> &headers) noexcept {
   char buf[32];
   int ctry = 0;
   int error = 1;
   char *decoded_headers = nullptr;
-  if (!headers.empty()) headers.clear();
+  if (!headers.empty())
+    headers.clear();
 
   printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
   while (ctry < num_tries && error) {
-    
+
     error = 0;
 
-    char* request = generate_request_string("callExpStart", str_buffer_short);
+    char *request = generate_request_string("callExpStart", str_buffer_short);
     if (request != nullptr && !error) {
       error = send_aristarchos_request(1, request, 0, nullptr);
       if (error) {
@@ -77,7 +80,7 @@ int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noe
     }
 
     request = generate_request_string("getHeaderStatus", str_buffer_short);
-    if (request!=nullptr && !error) {
+    if (request != nullptr && !error) {
       error = send_aristarchos_request(1, request, 1, str_buffer_long);
       if (error)
         fprintf(stderr,
@@ -85,9 +88,9 @@ int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noe
                 "Aristarchos; request was: [%s] (traceback: %s)\n",
                 date_str(buf), ctry + 1, num_tries, request, __func__);
     }
-    
+
     request = generate_request_string("callExpStop", str_buffer_short);
-    if (request!=nullptr && !error) {
+    if (request != nullptr && !error) {
       error = send_aristarchos_request(1, request, 0, nullptr);
       if (error) {
         fprintf(stderr,
@@ -100,7 +103,7 @@ int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noe
     }
 
     request = generate_request_string("grabHeader", str_buffer_short);
-    if (request!=nullptr && !error) {
+    if (request != nullptr && !error) {
       error = send_aristarchos_request(10, request, 1, str_buffer_long);
       if (error)
         fprintf(stderr,
@@ -114,9 +117,10 @@ int get_aristarchos_headers(int num_tries, std::vector<FitsHeader>& headers) noe
      * uncompressed and unencrypted
      */
     if (!error) {
-      printf("[DEBUG][%s] (%d/%d) Aristarchos replied; now trying to decode the "
-             "headers got back\n",
-             date_str(buf), ctry+1, num_tries);
+      printf(
+          "[DEBUG][%s] (%d/%d) Aristarchos replied; now trying to decode the "
+          "headers got back\n",
+          date_str(buf), ctry + 1, num_tries);
       /* note that the following function will, at some point, change the
        * contents of str_buffer_long; do not expect to find the reply string
        * there after the end of the call
@@ -631,7 +635,9 @@ int decoded_str_to_header(const char *decoded_msg,
 
     end = std::strchr(start, '\n');
     if (end == nullptr) {
-      printf("[ERROR][%s] Cannont find next newline character! remaining string is [%s] (traceback: %s)\n", date_str(buf), start, __func__);
+      printf("[ERROR][%s] Cannont find next newline character! remaining "
+             "string is [%s] (traceback: %s)\n",
+             date_str(buf), start, __func__);
       error = 1;
       break;
     }
