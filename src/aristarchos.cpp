@@ -601,8 +601,8 @@ int decoded_str_to_header(const char *decoded_msg,
 
   /* clear vector and allocate capacity */
   header_vec.clear();
-  if (header_vec.capacity() < 100)
-    header_vec.reserve(100);
+  if (header_vec.capacity() < 50)
+    header_vec.reserve(50);
 
   if (decoded_msg_sz < 100) {
     fprintf(stderr,
@@ -614,7 +614,6 @@ int decoded_str_to_header(const char *decoded_msg,
 
   /* While the stream is full i.e. no EOF */
   int max_hdrs = 1000, hdr_count = 0;
-  FitsHeader hdr;
   int error = 0;
   const char *start = decoded_msg;
   const char *end;
@@ -663,12 +662,15 @@ int decoded_str_to_header(const char *decoded_msg,
     }
 
     if (is_header_line) {
+      FitsHeader hdr;
+      hdr.type = FitsHeader::ValueType::tchar32;
+      
       // Keyword is the first 8 characters
       std::memset(hdr.key, '\0', FITS_HEADER_KEYNAME_CHARS);
       std::strncpy(hdr.key, start, 8);
 
-      // Value is the next batch up util the '/' character
-      std::memset(hdr.val, '\0', FITS_HEADER_VALUE_CHARS);
+      // Value is the next batch up until the '/' character
+      std::memset(hdr.cval, '\0', FITS_HEADER_VALUE_CHARS);
       const char *vstop = std::strchr(start + 8, '/');
       if (vstop == nullptr) {
         fprintf(stderr,
@@ -677,7 +679,7 @@ int decoded_str_to_header(const char *decoded_msg,
                 date_str(buf), __func__);
         return -1;
       }
-      std::strncpy(hdr.val, start + 11, vstop - (start + 11));
+      std::strncpy(hdr.cval, start + 11, vstop - (start + 11));
 
       // The comment is the remainder
       int remainder_sz = substr_sz - (vstop - start);
@@ -686,7 +688,7 @@ int decoded_str_to_header(const char *decoded_msg,
 
       printf("[DEBUG][%s] Resolved Aristarchos header line: key:[%s] -> "
              "value:[%s] / comment:[%s] (traceback: %s)\n",
-             date_str(buf), hdr.key, hdr.val, hdr.comment, __func__);
+             date_str(buf), hdr.key, hdr.cval, hdr.comment, __func__);
 
       // push back the new resolved header
       header_vec.emplace_back(hdr);

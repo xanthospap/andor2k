@@ -129,7 +129,10 @@ public:
 
   int update_key(const char* keyname, const char* value, const char* comment) noexcept {
     int status = 0;
-    if (fits_update_key(fptr, TSTRING, keyname, value, comment,
+    char cval[64];
+    std::memset(cval, 0, 64);
+    std::strcpy(cval, value);
+    if (fits_update_key(fptr, TSTRING, keyname, cval, comment,
                         &status))
       fits_report_error(stderr, status);
     return status;

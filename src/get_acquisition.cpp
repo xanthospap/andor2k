@@ -525,6 +525,7 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
   return 0;
 }
 
+/*
   int apply_fits_headers(FitsImage<int32_t>& fits, const AndorParameters *params) noexcept {
     fits.update_key("INSTRUME", "ANDOR2k", "Name of instrument");
     fits.update_key("OBSTYPE", params->type_, "Image type");
@@ -532,3 +533,4 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
     fits.update_key<int>("VBIN", params->image_vbin_, "Vertical binning");
 
   }
+*/
