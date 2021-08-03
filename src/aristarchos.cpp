@@ -39,19 +39,6 @@ unsigned int ceil_power2(unsigned int v) noexcept {
   return v;
 }
 
-/// @brief Right trim a string
-char *rtrim(char *str) noexcept {
-  char *top = str;
-  int sz = std::strlen(str) - 1;
-  while (sz >= 0) {
-    if (str[sz] != ' ')
-      break;
-    str[sz] = '\0';
-    --sz;
-  }
-  return top;
-}
-
 int get_aristarchos_headers(int num_tries,
                             std::vector<FitsHeader> &headers) noexcept {
   char buf[32];

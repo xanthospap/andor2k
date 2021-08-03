@@ -50,7 +50,8 @@ pkginclude_HEADERS = \
 		andor2k.hpp \
 		cppfits.hpp \
 		andor2kd.hpp \
-                aristarchos.hpp
+		fits_header.hpp \
+        aristarchos.hpp
 
 ##
 ##  Source files (distributed).
@@ -70,7 +71,8 @@ dist_libhelmosandor2k_la_SOURCES = \
 	get_acquisition.cpp \
 	set_acquisition.cpp \
 	resolve_image_parameters.cpp \
-        vhsspeed.cpp \
+    vhsspeed.cpp \
+	fits_header.cpp \
     aristarchos.cpp
 
 #andor2k_SOURCES = andor2k.cpp

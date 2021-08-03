@@ -1,4 +1,5 @@
 #include <vector>
+#include "fits_header.hpp"
 
 /// @brief Size of command buffer to be sent to Aristarchos
 constexpr int ARISTARCHOS_COMMAND_MAX_CHARS = 64;
@@ -15,22 +16,6 @@ constexpr int ARISTARCHOS_SOCKET_BUFFER_SIZE = 1024;
 /// @brief Buffer size used for decoding (bzip2 && base64) of 1Mb
 /// @todo is this too large?
 constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
-
-/// @brief max character in FITS header keyword
-constexpr int FITS_HEADER_KEYNAME_CHARS = 16;
-
-/// @brief max character in FITS header value
-constexpr int FITS_HEADER_VALUE_CHARS = 32;
-
-/// @brief max character in FITS header comment
-constexpr int FITS_HEADER_COMMENT_CHARS = 64;
-
-/// @brief Generic FITS header struct
-struct FitsHeader {
-  char key[FITS_HEADER_KEYNAME_CHARS];
-  char val[FITS_HEADER_VALUE_CHARS];
-  char comment[FITS_HEADER_COMMENT_CHARS];
-};
 
 int decoded_str_to_header(const char *decoded_msg,
                           std::vector<FitsHeader> &header_vec) noexcept;

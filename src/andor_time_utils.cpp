@@ -2,6 +2,14 @@
 #include "atmcdLXd.h"
 #include <cstdio>
 #include <cstring>
+#include "date/date.h"
+#include <chrono>
+
+using namespace date;
+using namespace std::chrono;
+
+#define CCD_GLOBAL_ONE_MILLISECOND_NS	(1000000)
+#include <ctime>
 
 /// This function corrects the multrun epoch time so that the time of the
 /// start of image acquisition is taken. It subtracts the readout time and
@@ -51,4 +59,47 @@ double start_time_correction(float exposure, int image_rows, int image_cols,
 
   /* Return time correction in nanoseconds */
   return (readout_time * 1e3 + ft_time * 1e3 + exposure * 1e9);
+}
+
+
+
+void Exposure_TimeSpec_To_Date_Obs_String(struct timespec time,char *time_string)
+{
+	struct tm *tm_time = NULL;
+	char buff[32];
+	long milliseconds;
+	
+	tm_time = gmtime(&(time.tv_sec));
+	strftime(buff,32,"%Y-%m-%dT%H:%M:%S.",tm_time);
+	milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
+	sprintf(time_string,"%s%03ld",buff,milliseconds);
+}
+
+
+void Exposure_TimeSpec_To_UtStart_String(struct timespec time,char *time_string)
+{
+	struct tm *tm_time = NULL;
+	char buff[16];
+	long milliseconds;
+	
+	tm_time = gmtime(&(time.tv_sec));
+	strftime(buff,16,"%H:%M:%S.",tm_time);
+	milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
+	sprintf(time_string,"%s%03ld",buff,milliseconds);
+}
+
+/**
+ * Routine to convert a timespec structure to a DATE sytle string to put into a FITS header.
+ * This uses gmtime and strftime to format the string. The resultant string is of the form:
+ * <b>CCYY-MM-DD</b>, which is equivalent to %Y-%m-%d passed to strftime.
+ * @param time The time to convert.
+ * @param time_string The string to put the time representation in. The string must be at least
+ * 	12 characters long.
+ */
+void Exposure_TimeSpec_To_Date_String(struct timespec time,char *time_string)
+{
+	struct tm *tm_time = NULL;
+	
+	tm_time = gmtime(&(time.tv_sec));
+	strftime(time_string,12,"%Y-%m-%d",tm_time);
 }
