@@ -126,7 +126,7 @@ int print_status() noexcept;
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
-int setup_acquisition(const AndorParameters *params, int &width, int &height,
+int setup_acquisition(const AndorParameters *params, int &width, int &height, float& vsspeed, float& hsspeed,
                       at_32 *img_mem) noexcept;
 
 int get_acquisition(const AndorParameters *params, int xnumpixels,

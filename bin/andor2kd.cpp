@@ -13,6 +13,7 @@
 #include <thread>
 #include <pthread.h>
 #include <unistd.h>
+#include "fits_header.hpp"
 
 using andor2k::ServerSocket;
 using andor2k::Socket;
@@ -270,7 +271,8 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
   return 0;
 }
 
-int get_image(const char *command = buffer) noexcept {
+int get_image(const char *command) noexcept {
+  /* first try to resolve the image parameters of the command */
   if (resolve_image_parameters(command, params)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve image parameters; aborting request! "
@@ -279,10 +281,12 @@ int get_image(const char *command = buffer) noexcept {
     return 1;
   }
 
+  /* setup the acquisition process for the image(s) */
   int width, height;
-  at_32 *data = nullptr;
+  float vsspeed, hsspeed;
+  at_32 *data = nullptr; /* remember to free this */
   int status = 0;
-  if (setup_acquisition(&params, width, height, data)) {
+  if (setup_acquisition(&params, width, height, vsspeed, hsspeed, data)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to setup acquisition; aborting request! "
             "(traceback: %s)\n",
@@ -305,7 +309,7 @@ int get_image(const char *command = buffer) noexcept {
   return status;
 }
 
-int resolve_command(const char *command = buffer) noexcept {
+int resolve_command(const char *command) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
     return set_temperature();
   } else if (!(std::strncmp(command, "shutdown", 8))) {
@@ -313,7 +317,7 @@ int resolve_command(const char *command = buffer) noexcept {
   } else if (!(std::strncmp(command, "status", 6))) {
     return print_status();
   } else if (!(std::strncmp(command, "image", 5))) {
-    return get_image();
+    return get_image(command);
   } else {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve command: \"%s\"; doing nothing!\n",
@@ -325,12 +329,12 @@ int resolve_command(const char *command = buffer) noexcept {
 void chat(const Socket &socket) {
   for (;;) {
 
-    // read message from client into buffer
+    /* read message from client into buffer */
     std::memset(buffer, '\0', sizeof(buffer));
     socket.recv(buffer, 1024);
 
-    // print client message
-    int answr = resolve_command();
+    /* perform the operation requested by clinet */
+    int answr = resolve_command(buffer);
     if (answr == -100) {
       printf(
           "[DEBUG][%s] Received shutdown command; initializing exit sequence\n",
@@ -419,6 +423,8 @@ int main() {
     fprintf(stderr, "[FATAL][%s] ... exiting\n", date_str(now_str));
   }
 
+  /* shutdown system */
   system_shutdown();
+
   return 0;
 }

@@ -7,7 +7,7 @@
 /// The function will:
 /// * setup the Read Mode
 /// * setup the Acquisition Mode
-/// * set vertical and horizontal shift speeds
+/// * set vertical and horizontal Shift Speeds
 /// * initialize the Shutter
 /// * compute image dimensions (aka pixels in width and height)
 /// * allocate memory for (temporarily) storing image data
@@ -21,12 +21,21 @@
 /// @param[out] height The actual number of pixels in the Y-dimension that the
 ///            acquired exposures are going to have.This number is ccomputed
 ///            based on the params instance
+/// @param[out] vsspeed The vertical shift speed set for the exposure; units
+///            are microseconds per pixel shift
+/// @param[out] hsspeed The horizontal shift speed set for the exposure; units
+///            are microseconds per pixel shift
 /// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-/// @warning Note that you are now incharge of the memory allocated; the
-/// memory should be freed/deleted after usage to avoid memory leaks
-int setup_acquisition(const AndorParameters *params, int &width, int &height,
+/// @warning 
+/// - Note that you are now incharge of the memory allocated; the
+///   memory should be freed/deleted after usage to avoid memory leaks
+/// - The function will set times for the exposure(s) (e.g. kinnetic time, 
+///   exposure time, etc), but these might not be the actual ones used by the 
+///   ANDOR2K system! Use the function GetAcquisitionTimings to get the actual
+///   times to be used
+int setup_acquisition(const AndorParameters *params, int &width, int &height, float& vsspeed, float& hsspeed,
                       at_32 *img_mem) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
@@ -54,8 +63,8 @@ int setup_acquisition(const AndorParameters *params, int &width, int &height,
   }
 
   /* set vertical and horizontal shift speeds */
-  float vspeed, hspeed;
-  if (set_fastest_recomended_vh_speeds(vspeed, hspeed)) {
+  // float vspeed, hspeed;
+  if (set_fastest_recomended_vh_speeds(vsspeed, hsspeed)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to set shift speed(s)! (traceback: %s)\n",
             date_str(buf), __func__);

@@ -65,6 +65,11 @@ template <> struct cfitsio_type<signed long> {
 template <> struct cfitsio_type<unsigned long> {
   static constexpr int type = TULONG;
 };
+
+/*template <> struct cfitsio_type<const char*> {
+  static constexpr int type =  TSTRING;
+};*/
+
 template <> struct cfitsio_type<float> { static constexpr int type = TFLOAT; };
 template <> struct cfitsio_type<double> {
   static constexpr int type = TDOUBLE;
@@ -76,7 +81,6 @@ template <> struct cfitsio_type<double> {
 template <typename T> class FitsImage {
 private:
   fitsfile *fptr; /* pointer to fits file; defined in fitsio */
-  // T data[ANDOR2K_MAX_XPIXELS * ANDOR2K_MAX_YPIXELS];
   char filename[256];
   int xpixels, ypixels;
   int bitpix = fits_details::cfitsio_bitpix<T>::bitpix;
@@ -118,6 +122,14 @@ public:
     using fits_details::cfitsio_type;
     int status = 0;
     if (fits_update_key(fptr, cfitsio_type<K>::type, keyname, value, comment,
+                        &status))
+      fits_report_error(stderr, status);
+    return status;
+  }
+
+  int update_key(const char* keyname, const char* value, const char* comment) noexcept {
+    int status = 0;
+    if (fits_update_key(fptr, TSTRING, keyname, value, comment,
                         &status))
       fits_report_error(stderr, status);
     return status;

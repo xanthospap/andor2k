@@ -17,7 +17,7 @@ struct FitsHeader {
   char key[FITS_HEADER_KEYNAME_CHARS];
   char val[FITS_HEADER_VALUE_CHARS];
   char comment[FITS_HEADER_COMMENT_CHARS];
-};
+}; // FitsHeader
 
 char *rtrim(char *str) noexcept;
 
@@ -33,6 +33,6 @@ struct FitsHeaders {
     }
 
     int update(const char* ikey, const char* ival, const char* icomment) noexcept;
-};
+}; // FitsHeaders
 
 #endif

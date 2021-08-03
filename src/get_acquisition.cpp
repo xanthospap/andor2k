@@ -418,6 +418,7 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
 
+
   /* start acquisition */
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
   StartAcquisition();
@@ -523,3 +524,11 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
   /* all done */
   return 0;
 }
+
+  int apply_fits_headers(FitsImage<int32_t>& fits, const AndorParameters *params) noexcept {
+    fits.update_key("INSTRUME", "ANDOR2k", "Name of instrument");
+    fits.update_key("OBSTYPE", params->type_, "Image type");
+    fits.update_key<int>("HBIN", params->image_hbin_, "Horizontal binning");
+    fits.update_key<int>("VBIN", params->image_vbin_, "Vertical binning");
+
+  }
