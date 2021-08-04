@@ -9,13 +9,13 @@
 
 using namespace std::chrono_literals;
 
-int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_single_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                     at_32 *img_buffer) noexcept;
-int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_rta_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept;
-int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_kinetic_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                      at_32 *img_buffer) noexcept;
-int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
+int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                   at_32 *img_buffer) noexcept;
 
 /// @brief Setup and get an acquisition (single or multiple scans)
@@ -33,7 +33,7 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-int get_acquisition(const AndorParameters *params, int xnumpixels,
+int get_acquisition(const AndorParameters *params, const FitsHeaders* fheaders, int xnumpixels,
                     int ynumpixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
@@ -42,13 +42,13 @@ int get_acquisition(const AndorParameters *params, int xnumpixels,
   int acq_status = 0;
   switch (params->acquisition_mode_) {
   case AcquisitionMode::SingleScan:
-    acq_status = get_single_scan(params, xnumpixels, ynumpixels, img_buffer);
+    acq_status = get_single_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   case AcquisitionMode::RunTillAbort:
-    acq_status = get_rta_scan(params, xnumpixels, ynumpixels, img_buffer);
+    acq_status = get_rta_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   case AcquisitionMode::KineticSeries:
-    acq_status = get_kinetic_scan(params, xnumpixels, ynumpixels, img_buffer);
+    acq_status = get_kinetic_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   default:
     fprintf(stderr,
@@ -86,7 +86,7 @@ int get_acquisition(const AndorParameters *params, int xnumpixels,
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_kinetic_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                      at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -171,8 +171,9 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
       printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
              fits_filename);
     }
-    fits.update_key<int>("NXAXIS1", &xpixels, "width");
-    fits.update_key<int>("NXAXIS2", &ypixels, "height");
+    if (fits.apply_headers(*fheaders, false) < 0) {
+      fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+    }
     fits.close();
   } /* colected/saved all exposures! */
 
@@ -198,7 +199,7 @@ int get_kinetic_scan(const AndorParameters *params, int xpixels, int ypixels,
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_rta_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -283,8 +284,9 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
       printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
              fits_filename);
     }
-    fits.update_key<int>("NXAXIS1", &xpixels, "width");
-    fits.update_key<int>("NXAXIS2", &ypixels, "height");
+    if (fits.apply_headers(*fheaders, false) < 0) {
+      fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+    }
     fits.close();
   } /* colected/saved all exposures! */
 
@@ -305,7 +307,7 @@ int get_rta_scan(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
+int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                   at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -370,8 +372,9 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
           printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
                  fits_filename);
         }
-        fits.update_key<int>("NXAXIS1", &xpixels, "width");
-        fits.update_key<int>("NXAXIS2", &ypixels, "height");
+        if (fits.apply_headers(*fheaders, false) < 0) {
+          fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+        }
         fits.close();
       }
     }
@@ -413,7 +416,7 @@ int get_rta_scan2(const AndorParameters *params, int xpixels, int ypixels,
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
+int get_single_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
                     at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -518,21 +521,35 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
     printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
            fits_filename);
   }
-  fits.update_key<int>("NXAXIS1", &xpixels, "width");
-  fits.update_key<int>("NXAXIS2", &ypixels, "height");
+  if (fits.apply_headers(*fheaders, false) < 0) {
+    fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+  }
   fits.close();
 
   /* all done */
   return 0;
 }
 
+	/* This function corrects the multrun epoch time so that the time of the start
+	 * of image acquisition is taken. It subtracts the readout time and the frame 
+	 * transfer time, derived from the horizontal and vertical shift speeds. These
+	 * speeds are in microseconds per pixel. Note tv_nsec is in nanoseconds so that
+	 * 1 microsec = 1000 nanosec! 
+	 *
+	 * For a single Multrun, the correction will be the same for each image, as it is a 
+	 * function of VSspeed, HSspeed and the exposure time. Use in conjunction with 
+	 * correct_start_time() to get the UTSTART struct timespec. 
+	 * @return Returns the value in nanoseconds of the correction
+   */
+double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept {
+  double dex = static_cast<double>(exposure);
+  double vsp = static_cast<double>(vsspeed);
+  double hsp = static_cast<double>(hsspeed);
 
-int collect_fits_headers(const AndorParameters *params, FitsHeaders& headers) noexcept {
-  headers.clear();
-  int error = 0;
-  headers.force_update("INSTRUME", "ANDOR2K", "Name of instrument");
-  headers.force_update("OBSTYPE", params->type_, "Image type");
-  headers.force_update<int>("HBIN", params->image_hbin_, "Horizontal binning");
-  headers.force_update<int>("VBIN", params->image_vbin_, "Vertical binning");
-  return error;
+  /* Get the readout time in microseconds */
+	double readout_time = (img_rows * vsp) +  (img_cols * img_rows * hsp);
+	double ft_time = img_rows * vsp;
+  
+  /* Return time correction in nanoseconds */
+	return (readout_time*1e3 + ft_time*1e3 + dex*1e9);
 }

@@ -3,6 +3,7 @@
 
 #include "atmcdLXd.h"
 #include <cstdint>
+#include "fits_header.hpp"
 
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
@@ -133,10 +134,10 @@ int print_status() noexcept;
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
-int setup_acquisition(const AndorParameters *params, int &width, int &height, float& vsspeed, float& hsspeed,
+int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int &width, int &height, float& vsspeed, float& hsspeed,
                       at_32 *img_mem) noexcept;
 
-int get_acquisition(const AndorParameters *params, int xnumpixels,
+int get_acquisition(const AndorParameters *params, const FitsHeaders* fheaders, int xnumpixels,
                     int ynumpixels, at_32 *img_buffer) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;

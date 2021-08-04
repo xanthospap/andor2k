@@ -147,11 +147,15 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int 
     printf("[DEBUG][%s] Kinetic Cycle Time   : %.2f sec.\n", buf, actual_kinetic);
   }
   int herror;
-  herror = fheaders->update<float>("HSSPEED", hsspeed, "Horizontal Shift Speed");
-  herror = fheaders->update<float>("VSSPEED", hsspeed, "Vertical Shift Speed");
+  herror = fheaders->update<float>("HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
+  herror = fheaders->update<float>("VSSPEED", hsspeed, "Vertical Shift Speed (microsec / pixel shift)");
   herror = fheaders->update<float>("EXPOSED", actual_exposure, "Requested exposure time (sec)");
   herror = fheaders->update<float>("EXPTIME", actual_exposure, "Requested exposure time (sec)");
-  if (herror != 4) {
+  herror = fheaders->update<int>("NXAXIS1", xnumpixels, "Image width (pixels)");
+  herror = fheaders->update<int>("NXAXIS2", ynumpixels, "Image height (pixels)");
+  herror = fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
+  herror = fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
+  if (herror != 8) {
     fprintf(stderr, "[ERROR][%s] Failed to add one or more headers to the list! (traceback: %s)\n", date_str(buf), __func__);
     return 3;
   }

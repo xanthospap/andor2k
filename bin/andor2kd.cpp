@@ -281,12 +281,15 @@ int get_image(const char *command) noexcept {
     return 1;
   }
 
-  /* setup the acquisition process for the image(s) */
+  /* setup the acquisition process for the image(s); also prepare FITS headers
+   * for later use in the file(s) to be saved
+   */
   int width, height;
   float vsspeed, hsspeed;
+  FitsHeaders fheaders;
   at_32 *data = nullptr; /* remember to free this */
   int status = 0;
-  if (setup_acquisition(&params, width, height, vsspeed, hsspeed, data)) {
+  if (setup_acquisition(&params, &fheaders, width, height, vsspeed, hsspeed, data)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to setup acquisition; aborting request! "
             "(traceback: %s)\n",

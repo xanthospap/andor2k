@@ -10,12 +10,6 @@
 
 #define CCD_GLOBAL_ONE_MILLISECOND_NS	(1000000)
 
-struct tpoint {
-    std::chrono::time_point<std::chrono::high_resolution_clock> now 
-        = std::chrono::high_resolution_clock::now();
-};
-
-
 char exposure_start_time_string[64];
 char exposure_date[64];
 char exposure_utstart[64];
@@ -25,8 +19,12 @@ void Exposure_TimeSpec_To_Date_String(struct timespec time,char *time_string);
 void Exposure_TimeSpec_To_UtStart_String(struct timespec time,char *time_string);
 void Exposure_TimeSpec_To_Date_Obs_String(struct timespec time,char *time_string);
 
+using time_point = std::chrono::system_clock::time_point;
+char* time_point_serialize(const time_point& t, char* buf) noexcept;
+
 double TimeCorrection = 123.0e0;
 auto TimeCorrection__ = std::chrono::nanoseconds((int)TimeCorrection);
+char buffer[64];
 
 int main() {
     auto timeStart = time(NULL);
@@ -83,6 +81,11 @@ int main() {
         printf("\texposure_start_time_string: %s\n", exposure_start_time_string);
         printf("\texposure_date             : %s\n", exposure_date);
         printf("\texposure_utstart          : %s\n", exposure_utstart);
+        printf("\t-------------------------------------------------------------------\n");
+        printf("\texposure_start_time_string: %s\n", time_point_serialize(Exposure_Start_Time__, buffer));
+        printf("\texposure_date             : %s\n", time_point_serialize(Exposure_Start_Time__, buffer));
+        printf("\texposure_utstart          : %s\n", time_point_serialize(Exposure_Epoch_Time__, buffer));
+        
     }
 
     printf("The End\n");
@@ -91,27 +94,36 @@ int main() {
 
 void Exposure_TimeSpec_To_Date_Obs_String(struct timespec time,char *time_string)
 {
-	struct tm *tm_time = NULL;
-	char buff[32];
-	long milliseconds;
-	
-	tm_time = gmtime(&(time.tv_sec));
-	strftime(buff,32,"%Y-%m-%dT%H:%M:%S.",tm_time);
-	milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
-	sprintf(time_string,"%s%03ld",buff,milliseconds);
+  struct tm *tm_time = NULL;
+  char buff[32];
+  long milliseconds;
+
+  tm_time = gmtime(&(time.tv_sec));
+  strftime(buff,32,"%Y-%m-%dT%H:%M:%S.",tm_time);
+  milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
+  sprintf(time_string,"%s%03ld",buff,milliseconds);
 }
 
+char* time_point_serialize(const time_point& t, char* buf) noexcept {
+  std::time_t tt = std::chrono::system_clock::to_time_t(t);
+  std::tm tm = *std::gmtime(&tt); //GMT (UTC)
+  int btw = 0;
+  if ((btw = std::strftime(buf, 64, "%FT%T.", &tm))) {
+    
+  }
+  return nullptr;
+}
 
 void Exposure_TimeSpec_To_UtStart_String(struct timespec time,char *time_string)
 {
-	struct tm *tm_time = NULL;
-	char buff[16];
-	long milliseconds;
-	
-	tm_time = gmtime(&(time.tv_sec));
-	strftime(buff,16,"%H:%M:%S.",tm_time);
-	milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
-	sprintf(time_string,"%s%03ld",buff,milliseconds);
+  struct tm *tm_time = NULL;
+  char buff[16];
+  long milliseconds;
+
+  tm_time = gmtime(&(time.tv_sec));
+  strftime(buff,16,"%H:%M:%S.",tm_time);
+  milliseconds = (long)(((double)time.tv_nsec)/((double)CCD_GLOBAL_ONE_MILLISECOND_NS));
+  sprintf(time_string,"%s%03ld",buff,milliseconds);
 }
 
 /**
@@ -124,26 +136,26 @@ void Exposure_TimeSpec_To_UtStart_String(struct timespec time,char *time_string)
  */
 void Exposure_TimeSpec_To_Date_String(struct timespec time,char *time_string)
 {
-	struct tm *tm_time = NULL;
-	
-	tm_time = gmtime(&(time.tv_sec));
-	strftime(time_string,12,"%Y-%m-%d",tm_time);
+  struct tm *tm_time = NULL;
+
+  tm_time = gmtime(&(time.tv_sec));
+  strftime(time_string,12,"%Y-%m-%d",tm_time);
 }
 
 int correct_start_time(struct timespec *t){
-    /* This function applies the time correction derived in start_time_correction() */
-    int seconds = (int)(floor(TimeCorrection / 1e9));
-    float nseconds = TimeCorrection - seconds * 1e9;
-    t->tv_sec -= seconds;
-    t->tv_nsec -= nseconds;
-    if (t->tv_nsec < 0) {
-        t->tv_sec -= 1;
-        t->tv_nsec += 1e9;
-    }
-    return 0;
+  /* This function applies the time correction derived in start_time_correction() */
+  int seconds = (int)(floor(TimeCorrection / 1e9));
+  float nseconds = TimeCorrection - seconds * 1e9;
+  t->tv_sec -= seconds;
+  t->tv_nsec -= nseconds;
+  if (t->tv_nsec < 0) {
+    t->tv_sec -= 1;
+    t->tv_nsec += 1e9;
+  }
+  return 0;
 }
 
 int correct_start_time(std::chrono::time_point<std::chrono::high_resolution_clock>& t) noexcept {
-    t -= TimeCorrection__;
-    return 0;
+  t -= TimeCorrection__;
+  return 0;
 }
