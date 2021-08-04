@@ -298,7 +298,7 @@ int get_image(const char *command) noexcept {
   }
 
   if (!status) {
-    if (status = get_acquisition(&params, width, height, data); status != 0) {
+    if (status = get_acquisition(&params, &fheaders, width, height, data); status != 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed to get/save image(s); aborting request now "
               "(traceback: %s)\n",

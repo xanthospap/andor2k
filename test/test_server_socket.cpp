@@ -170,8 +170,8 @@ int main() {
   signal(SIGTERM, interrupt);
 
   // create a socket dedicated to listen for status
-  pthread_t status_thread;
-  int thread_error = pthread_create(&status_thread, NULL, statusSockFunc, NULL);
+  // pthread_t status_thread;
+  // int thread_error = pthread_create(&status_thread, NULL, statusSockFunc, NULL);
 
   try {
     ServerSocket server_sock(8080);

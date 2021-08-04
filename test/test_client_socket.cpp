@@ -66,8 +66,8 @@ void *getStatus(void *ptr) noexcept {
 }
 
 int main() {
-  pthread_t status_thread;
-  int status_thread_error = pthread_create(&status_thread, NULL, getStatus, NULL);
+  //pthread_t status_thread;
+  //int status_thread_error = pthread_create(&status_thread, NULL, getStatus, NULL);
 
   try {
     // create and connect ....

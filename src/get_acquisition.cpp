@@ -9,13 +9,13 @@
 
 using namespace std::chrono_literals;
 
-int get_single_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                     at_32 *img_buffer) noexcept;
-int get_rta_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept;
-int get_kinetic_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                      at_32 *img_buffer) noexcept;
-int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                   at_32 *img_buffer) noexcept;
 
 /// @brief Setup and get an acquisition (single or multiple scans)
@@ -33,7 +33,7 @@ int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, in
 /// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-int get_acquisition(const AndorParameters *params, const FitsHeaders* fheaders, int xnumpixels,
+int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xnumpixels,
                     int ynumpixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
@@ -86,7 +86,7 @@ int get_acquisition(const AndorParameters *params, const FitsHeaders* fheaders, 
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_kinetic_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                      at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -199,7 +199,7 @@ int get_kinetic_scan(const AndorParameters *params, const FitsHeaders* fheaders,
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_rta_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                  at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -307,7 +307,7 @@ int get_rta_scan(const AndorParameters *params, const FitsHeaders* fheaders, int
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                   at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
@@ -416,12 +416,11 @@ int get_rta_scan2(const AndorParameters *params, const FitsHeaders* fheaders, in
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_single_scan(const AndorParameters *params, const FitsHeaders* fheaders, int xpixels, int ypixels,
+int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
                     at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
-
 
   /* start acquisition */
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
@@ -528,28 +527,4 @@ int get_single_scan(const AndorParameters *params, const FitsHeaders* fheaders, 
 
   /* all done */
   return 0;
-}
-
-	/* This function corrects the multrun epoch time so that the time of the start
-	 * of image acquisition is taken. It subtracts the readout time and the frame 
-	 * transfer time, derived from the horizontal and vertical shift speeds. These
-	 * speeds are in microseconds per pixel. Note tv_nsec is in nanoseconds so that
-	 * 1 microsec = 1000 nanosec! 
-	 *
-	 * For a single Multrun, the correction will be the same for each image, as it is a 
-	 * function of VSspeed, HSspeed and the exposure time. Use in conjunction with 
-	 * correct_start_time() to get the UTSTART struct timespec. 
-	 * @return Returns the value in nanoseconds of the correction
-   */
-double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept {
-  double dex = static_cast<double>(exposure);
-  double vsp = static_cast<double>(vsspeed);
-  double hsp = static_cast<double>(hsspeed);
-
-  /* Get the readout time in microseconds */
-	double readout_time = (img_rows * vsp) +  (img_cols * img_rows * hsp);
-	double ft_time = img_rows * vsp;
-  
-  /* Return time correction in nanoseconds */
-	return (readout_time*1e3 + ft_time*1e3 + dex*1e9);
 }

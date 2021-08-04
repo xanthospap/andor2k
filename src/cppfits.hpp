@@ -138,27 +138,49 @@ public:
       fits_report_error(stderr, status);
     return status;
   }
+  int update_key(const char* keyname, char (&value)[FITS_HEADER_VALUE_CHARS], const char* comment) noexcept {
+    int status = 0;
+    char cval[FITS_HEADER_VALUE_CHARS];
+    std::memset(cval, 0, FITS_HEADER_VALUE_CHARS);
+    std::strcpy(cval, value);
+    if (fits_update_key(fptr, TSTRING, keyname, cval, comment,
+                        &status))
+      fits_report_error(stderr, status);
+    return status;
+  }
+  /*
+  int update_key(const char* keyname, char value[FITS_HEADER_VALUE_CHARS], const char* comment) noexcept {
+    int status = 0;
+    char cval[FITS_HEADER_VALUE_CHARS];
+    std::memset(cval, 0, FITS_HEADER_VALUE_CHARS);
+    std::strcpy(cval, value);
+    if (fits_update_key(fptr, TSTRING, keyname, cval, comment,
+                        &status))
+      fits_report_error(stderr, status);
+    return status;
+  }*/
 
-  int apply_headers(const FitsHeaders& headers, bool stop_if_error) noexcept {
+  /// @note headers is actually a const parameter, but ... legacy C
+  int apply_headers(FitsHeaders& headers, bool stop_if_error) noexcept {
     int hdr_applied = 0;
     int hdr_errors = 0;
     int status;
-    for (const auto& hdr : headers.mvec) {
+    for (auto& hdr : headers.mvec) {
       switch (hdr.type) {
         case FitsHeader::ValueType::tchar32:
           status = this->update_key(hdr.key, hdr.cval, hdr.comment);
           break;
         case FitsHeader::ValueType::tint:
-          status = this->update_key<int>(hdr.key, hdr.ival, hdr.comment);
+          status = this->update_key<int>(hdr.key, &hdr.ival, hdr.comment);
           break;
         case FitsHeader::ValueType::tfloat:
-          status = this->update_key<float>(hdr.key, hdr.fval, hdr.comment);
+          status = this->update_key<float>(hdr.key, &hdr.fval, hdr.comment);
           break;
         case FitsHeader::ValueType::tuint:
-          status = this->update_key<unsigned>(hdr.key, hdr.uval, hdr.comment);
+          status = this->update_key<unsigned>(hdr.key, &hdr.uval, hdr.comment);
           break;
         case FitsHeader::ValueType::tdouble:
-          status = this->update_key<double>(hdr.key, hdr.dval, hdr.comment);
+          status = this->update_key<double>(hdr.key, &hdr.dval, hdr.comment);
           break;
         default:
           status = -100;

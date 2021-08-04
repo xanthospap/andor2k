@@ -137,7 +137,7 @@ int get_next_fits_filename(const AndorParameters *params,
 int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int &width, int &height, float& vsspeed, float& hsspeed,
                       at_32 *img_mem) noexcept;
 
-int get_acquisition(const AndorParameters *params, const FitsHeaders* fheaders, int xnumpixels,
+int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xnumpixels,
                     int ynumpixels, at_32 *img_buffer) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;

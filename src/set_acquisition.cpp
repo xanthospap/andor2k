@@ -5,6 +5,8 @@
 #include "aristarchos.hpp"
 #include "fits_header.hpp"
 
+double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept;
+
 /// @brief Setup an acquisition (single or multiple scans).
 /// The function will:
 /// * setup the Read Mode
@@ -155,7 +157,18 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int 
   herror = fheaders->update<int>("NXAXIS2", ynumpixels, "Image height (pixels)");
   herror = fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
   herror = fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
-  if (herror != 8) {
+  /* compute the start time correction for the headers */
+  double start_time_cor = start_time_correction(actual_exposure, vsspeed, hsspeed, ynumpixels, xnumpixels);
+  herror = fheaders->update<unsigned>("TIMECORR", static_cast<unsigned>(start_time_cor), "Timming correction already applied (nanosec)");
+  /* get the camera's temperature for reporting in header */
+  float tempf;
+  if (GetTemperatureF(&tempf) != DRV_TEMP_STABILIZED) {
+    fprintf(stderr, "[ERROR][%s] Tried to get temperature for headers, but did not get a stabilized one! (traceback %s)\n", date_str(buf), __func__);
+    return 10;
+  }
+  herror = fheaders->update<float>("CCDTEMP", tempf, "CCD temp at start of exposure degC");
+
+  if (herror != 10) {
     fprintf(stderr, "[ERROR][%s] Failed to add one or more headers to the list! (traceback: %s)\n", date_str(buf), __func__);
     return 3;
   }
@@ -176,4 +189,28 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int 
   width = xnumpixels;
   height = ynumpixels;
   return 0;
+}
+
+	/* This function corrects the multrun epoch time so that the time of the start
+	 * of image acquisition is taken. It subtracts the readout time and the frame 
+	 * transfer time, derived from the horizontal and vertical shift speeds. These
+	 * speeds are in microseconds per pixel. Note tv_nsec is in nanoseconds so that
+	 * 1 microsec = 1000 nanosec! 
+	 *
+	 * For a single Multrun, the correction will be the same for each image, as it is a 
+	 * function of VSspeed, HSspeed and the exposure time. Use in conjunction with 
+	 * correct_start_time() to get the UTSTART struct timespec. 
+	 * @return Returns the value in nanoseconds of the correction
+   */
+double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept {
+  double dex = static_cast<double>(exposure);
+  double vsp = static_cast<double>(vsspeed);
+  double hsp = static_cast<double>(hsspeed);
+
+  /* Get the readout time in microseconds */
+	double readout_time = (img_rows * vsp) +  (img_cols * img_rows * hsp);
+	double ft_time = img_rows * vsp;
+  
+  /* Return time correction in nanoseconds */
+	return (readout_time*1e3 + ft_time*1e3 + dex*1e9);
 }
