@@ -534,5 +534,5 @@ int collect_fits_headers(const AndorParameters *params, FitsHeaders& headers) no
   headers.force_update("OBSTYPE", params->type_, "Image type");
   headers.force_update<int>("HBIN", params->image_hbin_, "Horizontal binning");
   headers.force_update<int>("VBIN", params->image_vbin_, "Vertical binning");
-  return 0;
+  return error;
 }

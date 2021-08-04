@@ -2,6 +2,8 @@
 #include "atmcdLXd.h"
 #include <cstdio>
 #include <cstring>
+#include "aristarchos.hpp"
+#include "fits_header.hpp"
 
 /// @brief Setup an acquisition (single or multiple scans).
 /// The function will:
@@ -10,11 +12,14 @@
 /// * set vertical and horizontal Shift Speeds
 /// * initialize the Shutter
 /// * compute image dimensions (aka pixels in width and height)
+/// * if needed, get Aristarchos headers; add headers to the ones passed in
 /// * allocate memory for (temporarily) storing image data
 /// On sucess, a call to get_acquisition should follow to actually perform
 /// the acquisition.
 /// @param[in] params An AndorParameters instance holding information on the
 ///            acquisition we are going to setup.
+/// @param[in] fheaders A FitsHeaders instance; where needed, the function will
+///            add/update headers
 /// @param[out] width The actual number of pixels in the X-dimension that the
 ///            acquired exposures are going to have.This number is ccomputed
 ///            based on the params instance
@@ -35,7 +40,7 @@
 ///   exposure time, etc), but these might not be the actual ones used by the 
 ///   ANDOR2K system! Use the function GetAcquisitionTimings to get the actual
 ///   times to be used
-int setup_acquisition(const AndorParameters *params, int &width, int &height, float& vsspeed, float& hsspeed,
+int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int &width, int &height, float& vsspeed, float& hsspeed,
                       at_32 *img_mem) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
@@ -115,6 +120,41 @@ int setup_acquisition(const AndorParameters *params, int &width, int &height, fl
          ynumpixels);
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
+  
+  /* try to get/decode Aristarchos headers if requested */
+  if (params->ar_hdr_tries_ > 0) {
+    std::vector<FitsHeader> ar_headers;
+    ar_headers.reserve(50);
+    if (get_aristarchos_headers(params->ar_hdr_tries_, ar_headers)) {
+      fprintf(stderr, "[ERROR][%s] Failed to fetch/decode Aristarchos headers (traceback: %s)\n", date_str(buf), __func__);
+      return 2;
+    }
+    if (fheaders->merge(ar_headers, true) < 0) {
+      fprintf(stderr, "[ERROR][%s] Failed merging Aristarchos headers to the previous set! (traceback: %s)\n", date_str(buf), __func__);
+      return 2;
+    }
+  }
+
+  /* add a few things to the headers */
+  float actual_exposure, actual_accumulate, actual_kinetic;
+  if (GetAcquisitionTimings(&actual_exposure, &actual_accumulate, &actual_kinetic) != DRV_SUCCESS) {
+    fprintf(stderr, "[ERROR][%s] Failed to retrieve actual ANDOR2k-tuned acquisition timings! (traceback: %s)\n", date_str(buf), __func__);
+    return 3;
+  } else {
+    printf("[DEBUG][%s] Actual acquistion timings tuned by the ANDOR2K system to be:\n", date_str(buf));
+    printf("[DEBUG][%s] Exposure Time        : %.2f sec.\n", buf, actual_exposure);
+    printf("[DEBUG][%s] Accumulate Cycle Time: %.2f sec.\n", buf, actual_accumulate);
+    printf("[DEBUG][%s] Kinetic Cycle Time   : %.2f sec.\n", buf, actual_kinetic);
+  }
+  int herror;
+  herror = fheaders->update<float>("HSSPEED", hsspeed, "Horizontal Shift Speed");
+  herror = fheaders->update<float>("VSSPEED", hsspeed, "Vertical Shift Speed");
+  herror = fheaders->update<float>("EXPOSED", actual_exposure, "Requested exposure time (sec)");
+  herror = fheaders->update<float>("EXPTIME", actual_exposure, "Requested exposure time (sec)");
+  if (herror != 4) {
+    fprintf(stderr, "[ERROR][%s] Failed to add one or more headers to the list! (traceback: %s)\n", date_str(buf), __func__);
+    return 3;
+  }
 
   /* allocate memory to (temporarily) hold the image data */
   long image_pixels = xnumpixels * ynumpixels;

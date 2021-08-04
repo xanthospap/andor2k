@@ -66,25 +66,18 @@ void *getStatus(void *ptr) noexcept {
 }
 
 int main() {
-#ifdef SOCKET_LOGGER
-  printf("Note: Creating socket log file \"client_socket.log\"\n");
-  andor2k::SocketLogger log("client_socket.log");
-#endif
-
   pthread_t status_thread;
   int status_thread_error = pthread_create(&status_thread, NULL, getStatus, NULL);
 
   try {
     // create and connect ....
     printf("Creating client socket ... connecting to localhost at 8080 ...");
-#ifdef SOCKET_LOGGER
-    ClientSocket client_socket("127.0.0.1", 8080, &log);
-#else
     ClientSocket client_socket("127.0.0.1", 8080);
-#endif
+    
     // chat with server via the socket
     printf(" ready! can now talk to server side.\n");
     chat(client_socket);
+  
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR] Exception caught!\n");
     // fprintf(stderr, "%s", e.what().c_str());

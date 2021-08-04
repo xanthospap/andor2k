@@ -92,7 +92,12 @@ struct AndorParameters {
   */
   bool cooler_mode_{0};
 
-  bool get_aristarchos_headers = false;
+  /* number of tries to access aristarchos headers; if > 0 then we will try to
+   * access Aristarchos and get/decode its headers. If sucessefull, the headers
+   * will be added to the saved FITS image(s). If set to 0, then we will not
+   * try to acess Aristarchos
+   */
+  int ar_hdr_tries_ = 0;
 
 }; // AndorParameters
 

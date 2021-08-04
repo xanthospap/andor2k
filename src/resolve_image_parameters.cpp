@@ -20,6 +20,8 @@
 ///     acquiring the exposures.
 /// * --type [STRING] can be any of "flat", "bias", "object"
 /// * --exposure [FLOAT] exposure time in seconds
+/// * --ar-tries [INT] number of tries to access Aristarchos headers (0 means
+///     do not try at all)
 ///
 /// @param[in] command A c-string holding the command to resolve; the string
 ///                    should start with the "image" token and hold as many
@@ -249,6 +251,26 @@ int resolve_image_parameters(const char *command,
         fprintf(
             stderr,
             "[ERROR][%s] Failed to convert parameter \"%s\" to a (valid) float "
+            "numeric value (traceback: %s)\n",
+            date_str(buf), token, __func__);
+        return 1;
+      }
+      
+      /* ARISTARCHOS HEADERS
+       * --------------------------------------------------------*/
+    } else if (!std::strncmp(token, "--ar-tries", 10)) {
+      if (token = std::strtok(nullptr, " "); token == nullptr) {
+        fprintf(stderr,
+                "[ERROR][%s] Must provide an int argument to \"--ar-tries\" "
+                "(traceback: %s)\n",
+                date_str(buf), __func__);
+        return 1;
+      }
+      params.ar_hdr_tries_ = std::strtol(token, &end, 10);
+      if (end == token) {
+        fprintf(
+            stderr,
+            "[ERROR][%s] Failed to convert parameter \"%s\" to a (valid) int "
             "numeric value (traceback: %s)\n",
             date_str(buf), token, __func__);
         return 1;

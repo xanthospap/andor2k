@@ -2,8 +2,6 @@
 #define __FITS_HEADER_UTILS_HPP__
 
 #include <vector>
-#include <cstring>
-#include <algorithm>
 
 /// @brief max character in FITS header keyword
 constexpr int FITS_HEADER_KEYNAME_CHARS = 16;
@@ -31,15 +29,14 @@ struct FitsHeader {
   };// union
   ValueType type;
   
-  void clear() noexcept {
+  void clear() noexcept;/* {
     std::memset(key, 0, FITS_HEADER_KEYNAME_CHARS);
     std::memset(comment, 0, FITS_HEADER_COMMENT_CHARS);
     type = ValueType::unknown;
-  }
+  }*/
 
-  void cpy_chars(const char* ikey, const char* icomment) noexcept {
+  void cpy_chars(const char* ikey, const char* icomment) noexcept;/* {
     this->clear();
-    /* remove leading/trailing whitespace chars from key */
     std::memset(key, 0, FITS_HEADER_KEYNAME_CHARS);
     const char* start = ikey;
     while (*start && *start == ' ') ++start;
@@ -47,7 +44,7 @@ struct FitsHeader {
     rtrim(key);
     std::strcpy(comment, icomment);
     return;
-  }
+  }*/
 
   /// @brief compra two FitsHeaders by key
   /// @return The following integers are returned:
@@ -126,10 +123,28 @@ struct FitsHeaders {
         mvec.clear();
     }
 
+    int merge(const std::vector<FitsHeader>& hvec, bool stop_if_error) noexcept;/* {
+        int error = 0;
+        for (const auto& hdr : hvec) {
+          int failed = this->update(hdr);
+          if (failed < 0) {
+            if (stop_if_error) return -1;
+            else {
+              error += failed;
+            }
+          }
+        }
+        return error;
+    }*/
+
+
+    int update(const FitsHeader& hdr) noexcept;
+
     template <typename T>
     int update(const char *ikey, T tval, const char *icomment) noexcept {
       FitsHeader fh = create_fits_header(ikey, tval, icomment);
-
+      return this->update(fh);
+      /*
       auto it =
           std::find_if(mvec.begin(), mvec.end(), [&](const FitsHeader &hdr) {
             return !std::strcmp(hdr.key, fh.key);
@@ -145,6 +160,7 @@ struct FitsHeaders {
       } else {
         return -1;
       }
+      */
     }
     
     /// @brief Like update but checks nothing! use with care!
