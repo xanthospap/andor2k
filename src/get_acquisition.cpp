@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <thread>
+#include "fits_header.hpp"
 
 using namespace std::chrono_literals;
 
@@ -525,12 +526,13 @@ int get_single_scan(const AndorParameters *params, int xpixels, int ypixels,
   return 0;
 }
 
-/*
-  int apply_fits_headers(FitsImage<int32_t>& fits, const AndorParameters *params) noexcept {
-    fits.update_key("INSTRUME", "ANDOR2k", "Name of instrument");
-    fits.update_key("OBSTYPE", params->type_, "Image type");
-    fits.update_key<int>("HBIN", params->image_hbin_, "Horizontal binning");
-    fits.update_key<int>("VBIN", params->image_vbin_, "Vertical binning");
 
-  }
-*/
+int collect_fits_headers(const AndorParameters *params, FitsHeaders& headers) noexcept {
+  headers.clear();
+  int error = 0;
+  headers.force_update("INSTRUME", "ANDOR2K", "Name of instrument");
+  headers.force_update("OBSTYPE", params->type_, "Image type");
+  headers.force_update<int>("HBIN", params->image_hbin_, "Horizontal binning");
+  headers.force_update<int>("VBIN", params->image_vbin_, "Vertical binning");
+  return 0;
+}

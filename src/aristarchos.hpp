@@ -35,4 +35,5 @@ char *add_char_every(const char *source, char *dest, int every,
 
 char *decode_message(const char *message) noexcept;
 
-const char *rtrim(const char *str) noexcept;
+int get_aristarchos_headers(int num_tries,
+                            std::vector<FitsHeader> &headers) noexcept;

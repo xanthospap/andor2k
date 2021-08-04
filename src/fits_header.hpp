@@ -146,6 +146,13 @@ struct FitsHeaders {
         return -1;
       }
     }
+    
+    /// @brief Like update but checks nothing! use with care!
+    template <typename T>
+    int force_update(const char *ikey, T tval, const char *icomment) noexcept {
+      mvec.emplace_back( create_fits_header(ikey, tval, icomment) );
+      return 1;
+    }
 }; // FitsHeaders
 
 #endif

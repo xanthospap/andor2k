@@ -92,6 +92,8 @@ struct AndorParameters {
   */
   bool cooler_mode_{0};
 
+  bool get_aristarchos_headers = false;
+
 }; // AndorParameters
 
 inline int ReadOutMode2int(ReadOutMode rom) noexcept {
