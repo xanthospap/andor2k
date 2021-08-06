@@ -18,8 +18,14 @@ int doing_work = 0;
 int sabort = 0;
 int sintrp = 0;
 
+void shutdown(int status) noexcept {
+  printf("shutdown() called\n");
+  std::exit(status);
+}
+
 void set_abort(int signal) noexcept {
   printf("---> Signal caught: %d! setting abort\n", signal);
+  // shutdown(signal);
   sabort = 1;
 }
 
@@ -28,13 +34,24 @@ void interrupt(int signal) noexcept {
   sintrp = 1;
 }
 
-
-void do_work() {
+void do_work(const Socket& csock) {
   doing_work = 1;
+  char sbuf[1024];
+  
   printf("server doing work ....\n");
-  for (int i=0; i<7; ++i) {
+  std::strcpy(sbuf, "server going to work");
+  csock.send(sbuf);
+
+  for (int i=0; i<3; ++i) {
     std::this_thread::sleep_for(4000ms);
     printf("\tworking ... for function: %s\n", __func__);
+
+    std::memset(sbuf, 0, 1024);
+    std::sprintf(sbuf, "Server doing work (%d/%d)", i, 7);
+    if (csock.send(sbuf)<0) {
+      printf("------ ERROR failed to send message to client --\n");
+    }
+
     if (sabort) {
       printf("\tstop working now! sabort set!\n");
       doing_work = 0;
@@ -48,6 +65,13 @@ void do_work() {
     }
   }
   doing_work = 0;
+
+  std::memset(sbuf, 0, 1024);
+  sprintf(sbuf, "done %d", 0);
+  if (csock.send(sbuf)<0) {
+    printf("------ ERROR failed to send message to client --\n");
+  }
+  printf("Server work done!\n");
   return;
 }
 
@@ -67,10 +91,11 @@ void chat(const Socket &socket) { /* MAIN CHAT */
 
     // do some work
     if (!std::strncmp(buff_main, "image", 5))
-      do_work();
+      do_work(socket);
 
     if (sabort) {
       printf("abort set; leaving main chat!\n");
+      sabort = 1;
       break;
     }
 
@@ -92,9 +117,10 @@ void *statusSockFunc(void *ptr) noexcept { /* PARALLEL CHAT */
   int error = 0;
   pid_t ipid = getpid();
   status_th_error = 0;
-  ptr = nullptr;
-  if (ptr) printf("why is this not null?\n");
 
+  ptr = nullptr;
+  if (ptr) printf("what??");
+  
   try {
     ServerSocket server_sock(8080+1);
     Socket child_socket = server_sock.accept(error);

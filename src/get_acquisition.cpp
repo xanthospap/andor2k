@@ -1,22 +1,26 @@
 #include "andor2k.hpp"
+#include "andor_time_utils.hpp"
 #include "atmcdLXd.h"
+#include "fits_header.hpp"
 #include <chrono>
 #include <cppfits.hpp>
 #include <cstdio>
 #include <cstring>
 #include <thread>
-#include "fits_header.hpp"
 
 using namespace std::chrono_literals;
 
-int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                    at_32 *img_buffer) noexcept;
-int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept;
-int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                     at_32 *img_buffer) noexcept;
-int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                  at_32 *img_buffer) noexcept;
+extern int sig_interrupt_set;
+extern int sig_abort_set;
+
+int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                    int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                 int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                     int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+int get_rta_scan2(const AndorParameters *params, FitsHeaders *fheaders,
+                  int xpixels, int ypixels, at_32 *img_buffer) noexcept;
 
 /// @brief Setup and get an acquisition (single or multiple scans)
 /// The function will:
@@ -33,8 +37,9 @@ int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpix
 /// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xnumpixels,
-                    int ynumpixels, at_32 *img_buffer) noexcept {
+int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
+                    int xnumpixels, int ynumpixels,
+                    at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
 
@@ -42,13 +47,16 @@ int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xn
   int acq_status = 0;
   switch (params->acquisition_mode_) {
   case AcquisitionMode::SingleScan:
-    acq_status = get_single_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
+    acq_status =
+        get_single_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   case AcquisitionMode::RunTillAbort:
-    acq_status = get_rta_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
+    acq_status =
+        get_rta_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   case AcquisitionMode::KineticSeries:
-    acq_status = get_kinetic_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
+    acq_status =
+        get_kinetic_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
     break;
   default:
     fprintf(stderr,
@@ -86,8 +94,8 @@ int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xn
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                     at_32 *img_buffer) noexcept {
+int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                     int xpixels, int ypixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
@@ -101,9 +109,8 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int x
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
 
     /* do we have a signal to quit ? */
-    if (sig_kill_acquisition) {
-      sig_kill_acquisition = 0;
-      return -1;
+    if (sig_abort_set || sig_interrupt_set) {
+      return sig_abort_set ? ABORT_EXIT_STATUS : INTERRUPT_EXIT_STATUS;
     }
 
     /* wait until acquisition finished */
@@ -172,7 +179,10 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int x
              fits_filename);
     }
     if (fits.apply_headers(*fheaders, false) < 0) {
-      fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[WRNNG][%s] Some headers not applied in FITS file! Should "
+              "inspect file (traceback: %s)\n",
+              date_str(buf), __func__);
     }
     fits.close();
   } /* colected/saved all exposures! */
@@ -199,8 +209,8 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders* fheaders, int x
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                 at_32 *img_buffer) noexcept {
+int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                 int xpixels, int ypixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
@@ -214,9 +224,8 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixe
   while (lAcquired < params->num_images_) { /* loop untill we have all images */
 
     /* do we have a signal to quit ? */
-    if (sig_kill_acquisition) {
-      sig_kill_acquisition = 0;
-      return -1;
+    if (sig_abort_set || sig_interrupt_set) {
+      return sig_abort_set ? ABORT_EXIT_STATUS : INTERRUPT_EXIT_STATUS;
     }
 
     /* wait until acquisition finished */
@@ -285,7 +294,10 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixe
              fits_filename);
     }
     if (fits.apply_headers(*fheaders, false) < 0) {
-      fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[WRNNG][%s] Some headers not applied in FITS file! Should "
+              "inspect file (traceback: %s)\n",
+              date_str(buf), __func__);
     }
     fits.close();
   } /* colected/saved all exposures! */
@@ -307,8 +319,8 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixe
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                  at_32 *img_buffer) noexcept {
+int get_rta_scan2(const AndorParameters *params, FitsHeaders *fheaders,
+                  int xpixels, int ypixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
@@ -373,7 +385,10 @@ int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpix
                  fits_filename);
         }
         if (fits.apply_headers(*fheaders, false) < 0) {
-          fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+          fprintf(stderr,
+                  "[WRNNG][%s] Some headers not applied in FITS file! Should "
+                  "inspect file (traceback: %s)\n",
+                  date_str(buf), __func__);
         }
         fits.close();
       }
@@ -416,15 +431,23 @@ int get_rta_scan2(const AndorParameters *params, FitsHeaders* fheaders, int xpix
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
-int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xpixels, int ypixels,
-                    at_32 *img_buffer) noexcept {
+int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
+                    int xpixels, int ypixels, at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
 
-  /* start acquisition */
+  // start acquisition and get date
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
+
+  #ifdef DEBUG
+  auto at_start = std::chrono::high_resolution_clock::now();
+  #endif
   StartAcquisition();
+  #ifdef DEBUG
+  char xbuf[64];
+  printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
+  #endif
 
   /* get status and loop until acquisition finished */
   int status;
@@ -432,9 +455,17 @@ int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xp
 
   while (status == DRV_ACQUIRING)
     GetStatus(&status);
+  #ifdef DEBUG
+  at_start = std::chrono::high_resolution_clock::now();
+  printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
+  #endif
 
   /* get acquired data (from camera buffer) */
   unsigned int error = GetAcquiredData(img_buffer, xpixels * ypixels);
+  #ifdef DEBUG
+  at_start = std::chrono::high_resolution_clock::now();
+  printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
+  #endif
 
   /* check for errors */
   int retstat = 0;
@@ -521,7 +552,10 @@ int get_single_scan(const AndorParameters *params, FitsHeaders* fheaders, int xp
            fits_filename);
   }
   if (fits.apply_headers(*fheaders, false) < 0) {
-    fprintf(stderr, "[WRNNG][%s] Some headers not applied in FITS file! Should inspect file (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[WRNNG][%s] Some headers not applied in FITS file! Should inspect "
+            "file (traceback: %s)\n",
+            date_str(buf), __func__);
   }
   fits.close();
 

@@ -255,7 +255,7 @@ int resolve_image_parameters(const char *command,
             date_str(buf), token, __func__);
         return 1;
       }
-      
+
       /* ARISTARCHOS HEADERS
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--ar-tries", 10)) {

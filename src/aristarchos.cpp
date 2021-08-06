@@ -664,7 +664,7 @@ int decoded_str_to_header(const char *decoded_msg,
     if (is_header_line) {
       FitsHeader hdr;
       hdr.type = FitsHeader::ValueType::tchar32;
-      
+
       // Keyword is the first 8 characters
       std::memset(hdr.key, '\0', FITS_HEADER_KEYNAME_CHARS);
       std::strncpy(hdr.key, start, 8);

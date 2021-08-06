@@ -3,6 +3,7 @@
 #include "atmcdLXd.h"
 #include "cpp_socket.hpp"
 #include "cppfits.hpp"
+#include "fits_header.hpp"
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -10,44 +11,55 @@
 #include <cstring>
 #include <ctime>
 #include <fstream>
-#include <thread>
 #include <pthread.h>
+#include <thread>
 #include <unistd.h>
-#include "fits_header.hpp"
 
 using andor2k::ServerSocket;
 using andor2k::Socket;
 using namespace std::chrono_literals;
 
-/* ANDOR2K RELATED CONSTANTS */
+// ANDOR2K RELATED CONSTANTS
 constexpr int ANDOR_MIN_TEMP = -120;
 constexpr int ANDOR_MAX_TEMP = 10;
 
-/* signal abort */
-int abort_set = 0;
+// Global constants for abort/interrupt
+extern int sig_abort_set;
+extern int sig_interrupt_set;
 
-/* buffers and constants */
+// buffers and constants for socket communication
 constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
-char now_str[32] = {'\0'}; /* YYYY-MM-DD HH:MM:SS */
+char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char
-    buffer[SOCKET_BUFFER_SIZE]; /* used by sockets to communicate with client */
+    buffer[SOCKET_BUFFER_SIZE];
 
-/* ANDOR2K parameters controlling usage */
+// ANDOR2K parameters controlling usage
 AndorParameters params;
 
-/// @brief Signal handler to kill daemon
-void kill_daemon(int sig) noexcept {
-  printf("[DEBUG][%s] Caught signal (#%d); shutting down daemon\n",
-         date_str(now_str), sig);
-  system_shutdown();
+/// @brief Signal handler to kill daemon (calls shutdown() and then exits)
+void kill_daemon(int signal) noexcept {
+  printf("[DEBUG][%s] Caught signal (#%d); shutting down daemon (traceback: %s)\n",
+         date_str(now_str), signal, __func__);
+  // system_shutdown(); // RUN
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
-  exit(sig);
+  exit(signal);
+}
+/// @brief Signal handler for SEGFAULT (calls shutdown() and then exits)
+void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
+  printf("[FATAL][%s] Caught segfault at address %p; shutting down daemon (traceback: %s)\n", date_str(now_str), si->si_addr, __func__);
+  // system_shutdown(); // RUN
+  printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
+  exit(signal);
 }
 
-/// @brief Set ANDOR2K temperature
-int set_temperature(const char *command = buffer) noexcept {
+/// @brief Set ANDOR2K temperature via a command of type: "settemp [ITEMP]"
+/// @param[in] command A (char) buffer holding the command to be executed (null
+///            terminated). The command should be a c-string of type:
+///            "settemp [ITEMP]" where ITEMP is an integer denoting the
+///            temperature to be reached by the ANDOR2K camera
+int set_temperature(const char *command) noexcept {
   if (std::strncmp(command, "settemp", 7))
     return 1;
   // we expect that after the temperatues, we have a valid int
@@ -272,6 +284,7 @@ int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
 }
 
 int get_image(const char *command) noexcept {
+
   /* first try to resolve the image parameters of the command */
   if (resolve_image_parameters(command, params)) {
     fprintf(stderr,
@@ -289,16 +302,18 @@ int get_image(const char *command) noexcept {
   FitsHeaders fheaders;
   at_32 *data = nullptr; /* remember to free this */
   int status = 0;
-  if (setup_acquisition(&params, &fheaders, width, height, vsspeed, hsspeed, data)) {
+  if (setup_acquisition(&params, &fheaders, width, height, vsspeed, hsspeed,
+                        data)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to setup acquisition; aborting request! "
             "(traceback: %s)\n",
             date_str(now_str), __func__);
     status = 2;
   }
-
+  
   if (!status) {
-    if (status = get_acquisition(&params, &fheaders, width, height, data); status != 0) {
+    if (status = get_acquisition(&params, &fheaders, width, height, data);
+        status != 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed to get/save image(s); aborting request now "
               "(traceback: %s)\n",
@@ -307,14 +322,14 @@ int get_image(const char *command) noexcept {
     }
   }
 
+  /* free memory and return */
   delete[] data;
-
   return status;
 }
 
 int resolve_command(const char *command) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
-    return set_temperature();
+    return set_temperature(command);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
     return -100;
   } else if (!(std::strncmp(command, "status", 6))) {
@@ -353,12 +368,6 @@ void chat(const Socket &socket) {
 
     // send message to client
     socket.send(buffer);
-
-    // if message contains "exit" end chat
-    if (std::strncmp("exit", buffer, 4) == 0) {
-      printf("Server Exit ...\n");
-      break;
-    }
   }
 
   return;
@@ -368,8 +377,18 @@ int main() {
   int sock_status;
   unsigned int error;
 
-  // register signal SIGINT and signal handler
+  // register signal for SEGFAULT
+  struct sigaction sa;
+  std::memset(&sa, 0, sizeof(struct sigaction));
+  sigemptyset(&sa.sa_mask);
+  sa.sa_sigaction = segfault_sigaction;
+  sa.sa_flags = SA_SIGINFO;
+  sigaction(SIGSEGV, &sa, NULL);
+
+  // register signals and accossiated and signal handlers
   signal(SIGINT, kill_daemon);
+  signal(SIGQUIT, kill_daemon);
+  signal(SIGTERM, kill_daemon);
 
   // select the camera
   if (select_camera(params.camera_num_) < 0) {
@@ -394,7 +413,7 @@ int main() {
   std::this_thread::sleep_for(2000ms);
   printf("... ok!\n");
 
-  // cool down if needed
+  // cool down if needed RUN
   /*
   if (cool_to_temperature(INTITIALIZE_TO_TEMP)) {
       fprintf(stderr, "[FATAL][%s] Failed to set target

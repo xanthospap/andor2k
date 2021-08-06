@@ -2,8 +2,9 @@
 #define __HELMOS_ANDOR2K_HPP__
 
 #include "atmcdLXd.h"
-#include <cstdint>
 #include "fits_header.hpp"
+#include <cstdint>
+#include <limits>
 
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
@@ -28,8 +29,9 @@ constexpr int MAX_COOLING_DURATION = 30;
 /// @brief Max pixels in width/height
 constexpr int MAX_PIXELS_IN_DIM = 2048;
 
-/// @brief signal for killing an acquisition
-extern int sig_kill_acquisition;
+constexpr int ABORT_EXIT_STATUS = std::numeric_limits<int>::max();
+
+constexpr int INTERRUPT_EXIT_STATUS = std::numeric_limits<int>::max();
 
 enum class ReadOutMode : int_fast8_t {
   FullVerticalBinning = 0,
@@ -134,11 +136,13 @@ int print_status() noexcept;
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
-int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int &width, int &height, float& vsspeed, float& hsspeed,
+int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
+                      int &width, int &height, float &vsspeed, float &hsspeed,
                       at_32 *img_mem) noexcept;
 
-int get_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int xnumpixels,
-                    int ynumpixels, at_32 *img_buffer) noexcept;
+int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
+                    int xnumpixels, int ynumpixels, at_32 *img_buffer) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
+
 #endif

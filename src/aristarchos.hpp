@@ -1,5 +1,5 @@
-#include <vector>
 #include "fits_header.hpp"
+#include <vector>
 
 /// @brief Size of command buffer to be sent to Aristarchos
 constexpr int ARISTARCHOS_COMMAND_MAX_CHARS = 64;

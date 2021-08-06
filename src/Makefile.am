@@ -38,8 +38,7 @@ MCXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-march=native \
-	-DDEBUG \
-	-DSOCKET_LOGGER
+	-DDEBUG
 
 ##
 ##  Header files (distributed) installed in /$(includedir)/$(package name).
@@ -47,6 +46,7 @@ MCXXFLAGS = \
 ##
 pkginclude_HEADERS = \
         cpp_socket.hpp \
+		andor_time_utils.hpp \
 		andor2k.hpp \
 		cppfits.hpp \
 		andor2kd.hpp \
@@ -59,6 +59,7 @@ pkginclude_HEADERS = \
 ##
 dist_libhelmosandor2k_la_SOURCES = \
     andor2k.cpp \
+	andor_time_utils.cpp \
 	cpp_socket.cpp \
 	cmd_parser.cpp \
 	andor_tools.cpp \

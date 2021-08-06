@@ -1,11 +1,12 @@
 #include "andor2k.hpp"
+#include "aristarchos.hpp"
 #include "atmcdLXd.h"
+#include "fits_header.hpp"
 #include <cstdio>
 #include <cstring>
-#include "aristarchos.hpp"
-#include "fits_header.hpp"
 
-double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept;
+double start_time_correction(float exposure, float vsspeed, float hsspeed,
+                             int img_rows, int img_cols) noexcept;
 
 /// @brief Setup an acquisition (single or multiple scans).
 /// The function will:
@@ -35,14 +36,15 @@ double start_time_correction(float exposure, float vsspeed, float hsspeed, int i
 /// @param[out] img_mem A buffer where enough memory is allocated to store one
 ///            exposure based on input paramaeters. That means that the total
 ///            memory alocated is width * height * sizeof(at_32)
-/// @warning 
+/// @warning
 /// - Note that you are now incharge of the memory allocated; the
 ///   memory should be freed/deleted after usage to avoid memory leaks
-/// - The function will set times for the exposure(s) (e.g. kinnetic time, 
-///   exposure time, etc), but these might not be the actual ones used by the 
+/// - The function will set times for the exposure(s) (e.g. kinnetic time,
+///   exposure time, etc), but these might not be the actual ones used by the
 ///   ANDOR2K system! Use the function GetAcquisitionTimings to get the actual
 ///   times to be used
-int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int &width, int &height, float& vsspeed, float& hsspeed,
+int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
+                      int &width, int &height, float &vsspeed, float &hsspeed,
                       at_32 *img_mem) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
@@ -122,54 +124,86 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int 
          ynumpixels);
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
-  
+
   /* try to get/decode Aristarchos headers if requested */
   if (params->ar_hdr_tries_ > 0) {
     std::vector<FitsHeader> ar_headers;
     ar_headers.reserve(50);
     if (get_aristarchos_headers(params->ar_hdr_tries_, ar_headers)) {
-      fprintf(stderr, "[ERROR][%s] Failed to fetch/decode Aristarchos headers (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to fetch/decode Aristarchos headers "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
       return 2;
     }
     if (fheaders->merge(ar_headers, true) < 0) {
-      fprintf(stderr, "[ERROR][%s] Failed merging Aristarchos headers to the previous set! (traceback: %s)\n", date_str(buf), __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed merging Aristarchos headers to the previous "
+              "set! (traceback: %s)\n",
+              date_str(buf), __func__);
       return 2;
     }
   }
 
   /* add a few things to the headers */
   float actual_exposure, actual_accumulate, actual_kinetic;
-  if (GetAcquisitionTimings(&actual_exposure, &actual_accumulate, &actual_kinetic) != DRV_SUCCESS) {
-    fprintf(stderr, "[ERROR][%s] Failed to retrieve actual ANDOR2k-tuned acquisition timings! (traceback: %s)\n", date_str(buf), __func__);
+  if (GetAcquisitionTimings(&actual_exposure, &actual_accumulate,
+                            &actual_kinetic) != DRV_SUCCESS) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to retrieve actual ANDOR2k-tuned acquisition "
+            "timings! (traceback: %s)\n",
+            date_str(buf), __func__);
     return 3;
   } else {
-    printf("[DEBUG][%s] Actual acquistion timings tuned by the ANDOR2K system to be:\n", date_str(buf));
-    printf("[DEBUG][%s] Exposure Time        : %.2f sec.\n", buf, actual_exposure);
-    printf("[DEBUG][%s] Accumulate Cycle Time: %.2f sec.\n", buf, actual_accumulate);
-    printf("[DEBUG][%s] Kinetic Cycle Time   : %.2f sec.\n", buf, actual_kinetic);
+    printf("[DEBUG][%s] Actual acquistion timings tuned by the ANDOR2K system "
+           "to be:\n",
+           date_str(buf));
+    printf("[DEBUG][%s] Exposure Time        : %.2f sec.\n", buf,
+           actual_exposure);
+    printf("[DEBUG][%s] Accumulate Cycle Time: %.2f sec.\n", buf,
+           actual_accumulate);
+    printf("[DEBUG][%s] Kinetic Cycle Time   : %.2f sec.\n", buf,
+           actual_kinetic);
   }
   int herror;
-  herror = fheaders->update<float>("HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
-  herror = fheaders->update<float>("VSSPEED", hsspeed, "Vertical Shift Speed (microsec / pixel shift)");
-  herror = fheaders->update<float>("EXPOSED", actual_exposure, "Requested exposure time (sec)");
-  herror = fheaders->update<float>("EXPTIME", actual_exposure, "Requested exposure time (sec)");
+  herror = fheaders->update<float>(
+      "HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
+  herror = fheaders->update<float>(
+      "VSSPEED", hsspeed, "Vertical Shift Speed (microsec / pixel shift)");
+  herror = fheaders->update<float>("EXPOSED", actual_exposure,
+                                   "Requested exposure time (sec)");
+  herror = fheaders->update<float>("EXPTIME", actual_exposure,
+                                   "Requested exposure time (sec)");
   herror = fheaders->update<int>("NXAXIS1", xnumpixels, "Image width (pixels)");
-  herror = fheaders->update<int>("NXAXIS2", ynumpixels, "Image height (pixels)");
-  herror = fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
-  herror = fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
+  herror =
+      fheaders->update<int>("NXAXIS2", ynumpixels, "Image height (pixels)");
+  herror =
+      fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
+  herror =
+      fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
   /* compute the start time correction for the headers */
-  double start_time_cor = start_time_correction(actual_exposure, vsspeed, hsspeed, ynumpixels, xnumpixels);
-  herror = fheaders->update<unsigned>("TIMECORR", static_cast<unsigned>(start_time_cor), "Timming correction already applied (nanosec)");
+  double start_time_cor = start_time_correction(
+      actual_exposure, vsspeed, hsspeed, ynumpixels, xnumpixels);
+  herror = fheaders->update<unsigned>(
+      "TIMECORR", static_cast<unsigned>(start_time_cor),
+      "Timming correction already applied (nanosec)");
   /* get the camera's temperature for reporting in header */
   float tempf;
   if (GetTemperatureF(&tempf) != DRV_TEMP_STABILIZED) {
-    fprintf(stderr, "[ERROR][%s] Tried to get temperature for headers, but did not get a stabilized one! (traceback %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Tried to get temperature for headers, but did not get "
+            "a stabilized one! (traceback %s)\n",
+            date_str(buf), __func__);
     return 10;
   }
-  herror = fheaders->update<float>("CCDTEMP", tempf, "CCD temp at start of exposure degC");
+  herror = fheaders->update<float>("CCDTEMP", tempf,
+                                   "CCD temp at start of exposure degC");
 
   if (herror != 10) {
-    fprintf(stderr, "[ERROR][%s] Failed to add one or more headers to the list! (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to add one or more headers to the list! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     return 3;
   }
 
@@ -189,28 +223,4 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders* fheaders, int 
   width = xnumpixels;
   height = ynumpixels;
   return 0;
-}
-
-	/* This function corrects the multrun epoch time so that the time of the start
-	 * of image acquisition is taken. It subtracts the readout time and the frame 
-	 * transfer time, derived from the horizontal and vertical shift speeds. These
-	 * speeds are in microseconds per pixel. Note tv_nsec is in nanoseconds so that
-	 * 1 microsec = 1000 nanosec! 
-	 *
-	 * For a single Multrun, the correction will be the same for each image, as it is a 
-	 * function of VSspeed, HSspeed and the exposure time. Use in conjunction with 
-	 * correct_start_time() to get the UTSTART struct timespec. 
-	 * @return Returns the value in nanoseconds of the correction
-   */
-double start_time_correction(float exposure, float vsspeed, float hsspeed, int img_rows, int img_cols) noexcept {
-  double dex = static_cast<double>(exposure);
-  double vsp = static_cast<double>(vsspeed);
-  double hsp = static_cast<double>(hsspeed);
-
-  /* Get the readout time in microseconds */
-	double readout_time = (img_rows * vsp) +  (img_cols * img_rows * hsp);
-	double ft_time = img_rows * vsp;
-  
-  /* Return time correction in nanoseconds */
-	return (readout_time*1e3 + ft_time*1e3 + dex*1e9);
 }
