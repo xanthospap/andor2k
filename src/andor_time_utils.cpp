@@ -28,7 +28,7 @@ using namespace std::chrono;
 ///    the one supllied by the user. that is because the ANDOR system can modify
 ///    the user-supplied exposure time to make it valid (considering other
 ///    options passed in). See the SDK supplied GetAcquisitionTimings function.
-double start_time_correction(float exposure, float vsspeed, float hsspeed,
+double start_time_correction_impl(float exposure, float vsspeed, float hsspeed,
                              int img_rows, int img_cols) noexcept {
   double dex = static_cast<double>(exposure);
   double vsp = static_cast<double>(vsspeed);
@@ -61,9 +61,16 @@ double start_time_correction(float exposure, float vsspeed, float hsspeed,
   return (readout_time * 1e3 + ft_time * 1e3 + dex * 1e9);
 }
 
+std::chrono::nanoseconds start_time_correction(float exposure, float vsspeed, float hsspeed,
+                             int img_rows, int img_cols) noexcept {
+double corr_ns = start_time_correction_impl(exposure, vsspeed, hsspeed, img_rows, img_cols);
+long lcorr_ns = std::round(corr_ns);
+return std::chrono::nanoseconds(lcorr_ns);
+}
+
 std::tm strfdt_work(const std_time_point& t, long& fractional_seconds) noexcept {
   std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(t.time_since_epoch());
-  std::chrono::seconds s = std::chrono::duration_cast<std::chrono::seconds>(ms);
+  // std::chrono::seconds s = std::chrono::duration_cast<std::chrono::seconds>(ms);
   std::time_t tt = std::chrono::system_clock::to_time_t(t);
   std::tm tm = *std::gmtime(&tt); //GMT (UTC)
   fractional_seconds = ms.count() % 1000;

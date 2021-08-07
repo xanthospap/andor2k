@@ -15,6 +15,12 @@ constexpr int MAX_IMAGE_TYPE_CHARS = 16;
 // @brief Max chars for any fits file (including path)
 constexpr int MAX_FITS_FILE_SIZE = 256;
 
+constexpr int MAX_STATUS_STRING_SIZE = 128;
+
+constexpr int MAX_OBJECT_NAME_CHARS = 32;
+
+constexpr int MAX_FILTER_NAME_CHARS = 16;
+
 /// @brief Minimum temperature to reach before shut down
 constexpr int SHUTDOWN_TEMPERATURE = 2;
 
@@ -58,14 +64,18 @@ enum class ShutterMode : int_fast8_t {
 }; // ShutterMode
 
 struct AndorParameters {
+  void set_defaults() noexcept;
+
   int camera_num_{0};
   float exposure_;
   int num_images_{1};
 
-  char type_[MAX_IMAGE_TYPE_CHARS] = {'\0'};
   char initialization_dir_[128] = "/usr/local/etc/andor";
-  char image_filename_[MAX_FITS_FILENAME_SIZE] = "";
   char save_dir_[128] = "/home/andor2k/fits";
+  char type_[MAX_IMAGE_TYPE_CHARS];
+  char image_filename_[MAX_FITS_FILENAME_SIZE];
+  char object_name_[MAX_OBJECT_NAME_CHARS];
+  char filter_name_[MAX_FILTER_NAME_CHARS];
 
   /* options for read-out mode */
   ReadOutMode read_out_mode_{ReadOutMode::Image};
@@ -138,11 +148,13 @@ int get_next_fits_filename(const AndorParameters *params,
 
 int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                       int &width, int &height, float &vsspeed, float &hsspeed,
-                      at_32 *img_mem) noexcept;
+                      at_32 *&img_mem) noexcept;
 
 int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                     int xnumpixels, int ynumpixels, at_32 *img_buffer) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
 
+char* get_status_string(char *buf) noexcept;
+char* get_start_acquisition_status_string(unsigned int error, char *buffer) noexcept;
 #endif

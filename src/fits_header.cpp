@@ -75,6 +75,14 @@ FitsHeader create_fits_header(const char *key, unsigned val,
   fh.uval = val;
   return fh;
 }
+FitsHeader create_fits_header(const char *key, long val,
+                              const char *comment) noexcept {
+  FitsHeader fh;
+  fh.cpy_chars(key, comment);
+  fh.type = FitsHeader::ValueType::tlong;
+  fh.lval = val;
+  return fh;
+}
 
 /// @return If any error has occured, returns the actual number of errors
 ///         occured during concatenation; if no error has occured, returns

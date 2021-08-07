@@ -42,8 +42,8 @@ void do_work(const Socket& csock) {
   std::strcpy(sbuf, "server going to work");
   csock.send(sbuf);
 
-  for (int i=0; i<3; ++i) {
-    std::this_thread::sleep_for(4000ms);
+  for (int i=0; i<7; ++i) {
+    std::this_thread::sleep_for(1000ms);
     printf("\tworking ... for function: %s\n", __func__);
 
     std::memset(sbuf, 0, 1024);
@@ -57,6 +57,7 @@ void do_work(const Socket& csock) {
       doing_work = 0;
       return;
     }
+
     if (sintrp) {
       printf("\tstop working now! interupt set!\n");
       doing_work = 0;

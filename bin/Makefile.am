@@ -1,5 +1,6 @@
 bin_PROGRAMS = dandor2kd \
-	dandor2k_client
+	dandor2k_client \
+	testAndor
 
 MCXXFLAGS = \
 	-std=c++17 \
@@ -23,3 +24,7 @@ dandor2kd_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lssl 
 dandor2k_client_SOURCES = andor2k_client.cpp
 dandor2k_client_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
 dandor2k_client_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lssl -lcrypto -lbz2 -lm
+
+testAndor_SOURCES = test_andor.cpp
+testAndor_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
+testAndor_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lssl -lcrypto -lbz2 -lm

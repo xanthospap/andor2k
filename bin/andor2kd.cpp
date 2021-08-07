@@ -42,14 +42,14 @@ AndorParameters params;
 void kill_daemon(int signal) noexcept {
   printf("[DEBUG][%s] Caught signal (#%d); shutting down daemon (traceback: %s)\n",
          date_str(now_str), signal, __func__);
-  // system_shutdown(); // RUN
+  system_shutdown(); // RUN
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
   exit(signal);
 }
 /// @brief Signal handler for SEGFAULT (calls shutdown() and then exits)
 void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
   printf("[FATAL][%s] Caught segfault at address %p; shutting down daemon (traceback: %s)\n", date_str(now_str), si->si_addr, __func__);
-  // system_shutdown(); // RUN
+  system_shutdown(); // RUN
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
   exit(signal);
 }
@@ -84,203 +84,6 @@ int set_temperature(const char *command) noexcept {
   }
   // command seems ok .... do it!
   return cool_to_temperature(target_temp);
-}
-
-/* OBSOLETE not used anymore */
-int acquire_image(AndorParameters &aparams, int xpixels, int ypixels) noexcept {
-  /* ------------------------------------------------------------ ACQUISITION */
-  printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(now_str));
-  StartAcquisition();
-  int status;
-
-  if (aparams.acquisition_mode_ == AcquisitionMode::SingleScan) {
-    at_32 *imageData = new at_32[xpixels * ypixels];
-    std::fstream fout("image.txt", std::ios::out);
-    // Loop until acquisition finished
-    GetStatus(&status);
-    while (status == DRV_ACQUIRING)
-      GetStatus(&status);
-    GetAcquiredData(imageData, xpixels * ypixels);
-    // for (int i = 0; i < xpixels * ypixels; i++)
-    //  fout << imageData[i] << std::endl;
-    if (get_next_fits_filename(&aparams, fits_file)) {
-      fprintf(stderr,
-              "[ERROR][%s] Failed getting FITS filename! No FITS image saved\n",
-              date_str(now_str));
-    }
-    printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...",
-           date_str(now_str), fits_file);
-    /*if (SaveAsFITS(fits_file, 3) != DRV_SUCCESS) {
-      fprintf(stderr, "\n[ERROR][%s] Failed to save image to fits format!\n",
-              date_str());
-    if (SaveAsFITS(fits_file, 0) != DRV_SUCCESS) {
-      fprintf(stderr, "\n[ERROR][%s] Failed to save image to fits format!\n",
-              date_str());
-    get_next_fits_filename(&aparams, fits_file);*/
-    FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
-    if (fits.write<at_32>(imageData)) {
-      fprintf(stderr, "[ERROR][%s] Failed writting data to FITS file!\n",
-              date_str(now_str));
-    } else {
-      printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(now_str),
-             fits_file);
-    }
-    fits.update_key<int>("NXAXIS1", &xpixels, "width");
-    fits.update_key<int>("NXAXIS2", &ypixels, "height");
-    fits.close();
-    /*} else {
-      printf(" done!\n");
-    }*/
-    delete[] imageData;
-
-  } else if (aparams.acquisition_mode_ == AcquisitionMode::RunTillAbort) {
-    /*
-    at_32 lAcquired = 0;
-    at_32 count = 0;
-    long lNumberInSeries = 2;//aparams.num_images_;
-    at_u16 *data = new unsigned short[xpixels*ypixels];
-    while (lAcquired < lNumberInSeries) {
-      WaitForAcquisition();
-      GetTotalNumberImagesAcquired(&lAcquired);
-      GetMostRecentImage16(data, xpixels*ypixels);
-      printf("--> Acquired data for image %d/%d\n", lAcquired, lNumberInSeries);
-      get_next_fits_filename(&aparams, fits_file);
-      unsigned int error = SaveAsFITS(fits_file, 0);
-      printf("--> FITS error: %d\n", error);
-    }
-    AbortAcquisition();
-    delete[] data;
-    printf("--> Acquisition Aborted\n");
-    */
-    unsigned int error;
-    int images_remaining = aparams.num_images_;
-    int buffer_images_remaining = 0;
-    int buffer_images_retrieved = 0;
-    at_32 series = 0, first, last;
-    at_32 *data = new at_32[xpixels * ypixels];
-    GetStatus(&status);
-    auto acq_start_t = std::chrono::high_resolution_clock::now();
-    while ((status == DRV_ACQUIRING && images_remaining > 0) ||
-           buffer_images_remaining > 0) {
-      if (images_remaining == 0)
-        error = AbortAcquisition();
-
-      GetTotalNumberImagesAcquired(&series);
-
-      if (GetNumberNewImages(&first, &last) == DRV_SUCCESS) {
-        buffer_images_remaining = last - first;
-        images_remaining = aparams.num_images_ - series;
-
-        error = GetOldestImage(data, xpixels * ypixels);
-
-        if (error == DRV_P2INVALID || error == DRV_P1INVALID) {
-          fprintf(stderr, "[ERROR][%s] Acquisition error, nr #%u\n",
-                  date_str(now_str), error);
-          fprintf(stderr, "[ERROR][%s] Aborting acquisition.\n",
-                  date_str(now_str));
-          AbortAcquisition();
-        }
-
-        if (error == DRV_SUCCESS) {
-          ++buffer_images_retrieved;
-          get_next_fits_filename(&aparams, fits_file);
-          FitsImage<uint16_t> fits(fits_file, xpixels, ypixels);
-          fits.write<at_32>(data);
-          fits.update_key<int>("NXAXIS1", &xpixels, "width");
-          fits.update_key<int>("NXAXIS2", &ypixels, "height");
-          fits.close();
-        }
-      }
-
-      // abort after full number of images taken
-      if (series >= aparams.num_images_) {
-        printf("[DEBUG][%s] Succesefully acquired all images\n",
-               date_str(now_str));
-        AbortAcquisition();
-      }
-
-      GetStatus(&status);
-      auto nowt = std::chrono::high_resolution_clock::now();
-      double elapsed_time_ms =
-          std::chrono::duration<double, std::milli>(nowt - acq_start_t).count();
-      if (elapsed_time_ms > 3 * 60 * 1000) {
-        fprintf(
-            stderr,
-            "[ERROR][%s] Aborting acquisition cause it took too much time!\n",
-            date_str(now_str));
-        AbortAcquisition();
-        GetStatus(&status);
-      }
-    }
-    /*
-    at_32 *data = new at_32[xpixels * ypixels];
-    int images_acquired = 0;
-    bool abort = false;
-    auto sleep_ms = std::chrono::milliseconds(
-        static_cast<int>(std::ceil(aparams.exposure_ + 0.5)) * 2000);
-    std::this_thread::sleep_for(sleep_ms);
-    while ((images_acquired < aparams.num_images_) && !abort) { //
-    -----------------------------------> unsigned int error =
-    GetOldestImage(data, xpixels * ypixels); switch (error) { case DRV_SUCCESS:
-        ++images_acquired;
-        printf("[DEBUG][%s] Acquired image nr %2d/%2d\n", date_str(),
-               images_acquired, aparams.num_images_);
-        if (get_next_fits_filename(&aparams, fits_file)) {
-          fprintf(
-              stderr,
-              "[ERROR][%s] Failed getting FITS filename! No FITS image saved\n",
-              date_str());
-        }
-        printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...",
-               date_str(), fits_file);
-        unsigned int fits_error;
-        std::this_thread::sleep_for(1000ms);
-        if (fits_error = SaveAsFITS(fits_file, 3); fits_error != DRV_SUCCESS) {
-          fprintf(stderr,
-                  "\n[ERROR][%s] Failed to save image to fits format!",
-                  date_str());
-          if (fits_error == DRV_ERROR_ACK) {
-            fprintf(stderr, " unable to communicate with card\n");
-          } else if (fits_error == DRV_P1INVALID) {
-            fprintf(stderr, " invalid pointer\n");
-          } else if (fits_error == DRV_P2INVALID) {
-            fprintf(stderr, " array size is incorrect\n");
-          } else if (fits_error == DRV_NO_NEW_DATA) {
-            fprintf(stderr, " no new data yet\n");
-          }
-        } else {
-          printf(" done!\n");
-        }
-        break;
-      case DRV_NOT_INITIALIZED:
-        fprintf(stderr,
-                "[ERROR][%s] Failed to acquire image; system not initialized\n",
-                date_str());
-        [[fallthrough]];
-      case DRV_ERROR_ACK:
-        fprintf(stderr,
-                "[ERROR][%s] Failed to acquire image; unable to "
-                "communicate with card\n",
-                date_str());
-        [[fallthrough]];
-      case DRV_P1INVALID:
-        fprintf(stderr,
-                "[ERROR][%s] Failed to acquire image; data array size is "
-                "incorrect\n",
-                date_str());
-        AbortAcquisition();
-        abort = true;
-        break;
-      case DRV_NO_NEW_DATA:
-        printf("[DEBUG][%s] No new data yet ... waiting ...\n", date_str());
-        std::this_thread::sleep_for(sleep_ms);
-      }
-    } // <----------------------------------- delete[] data;
-    */
-  }
-  /* ------------------------------------------------------------ ACQUISITION */
-
-  return 0;
 }
 
 int get_image(const char *command) noexcept {
@@ -390,6 +193,13 @@ int main() {
   signal(SIGQUIT, kill_daemon);
   signal(SIGTERM, kill_daemon);
 
+  // initialize AndorParameters
+  params.set_defaults();
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("WTF?? main ~199 readoutmode is not image\n");
+    return 10;
+  }
+
   // select the camera
   if (select_camera(params.camera_num_) < 0) {
     fprintf(stderr, "[FATAL][%s] Failed to select camera...exiting\n",
@@ -419,7 +229,7 @@ int main() {
       fprintf(stderr, "[FATAL][%s] Failed to set target
   temperature...exiting\n", date_str()); return 10;
   }*/
-
+  
   try {
     ServerSocket server_sock(SOCKET_PORT);
 

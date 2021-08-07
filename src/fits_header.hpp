@@ -22,6 +22,7 @@ struct FitsHeader {
     tfloat,
     tdouble,
     tchar32,
+    tlong,
     unknown
   };
 
@@ -33,74 +34,16 @@ struct FitsHeader {
     float fval;
     unsigned uval;
     double dval;
+    long lval;
   }; // union
   ValueType type;
 
-  void clear() noexcept; /* {
-     std::memset(key, 0, FITS_HEADER_KEYNAME_CHARS);
-     std::memset(comment, 0, FITS_HEADER_COMMENT_CHARS);
-     type = ValueType::unknown;
-   }*/
+  void clear() noexcept;
 
-  void cpy_chars(const char *ikey, const char *icomment) noexcept; /* {
-     this->clear();
-     std::memset(key, 0, FITS_HEADER_KEYNAME_CHARS);
-     const char* start = ikey;
-     while (*start && *start == ' ') ++start;
-     std::strcpy(key, start);
-     rtrim(key);
-     std::strcpy(comment, icomment);
-     return;
-   }*/
+  void cpy_chars(const char *ikey, const char *icomment) noexcept;
 
-  /// @brief compra two FitsHeaders by key
-  /// @return The following integers are returned:
-  ///    - keys are the same and values are of the same type : 0
-  ///    - keys are the same and values are of different types : -1
-  ///    - keys are not the same : 1
-  /*
-  int compare(const FitsHeader& other) noexcept {
-      if (!std::strcmp(key, other.key)) {
-          return type == other.type ? 0 : -1;
-      }
-      return 1;
-  }*/
 }; // FitsHeader
 
-/*
-/// @brief (Template) factory function to create a FitsHeaderInstance
-template<typename T> FitsHeader create_fits_header(const char* key, T val, const
-char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key, comment); fh.type =
-FitsHeader::ValueType::unknown; fh.dval = val; return fh;
-}
-template<> FitsHeader create_fits_header<const char*>(const char* key, const
-char* val, const char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key,
-comment); fh.type = FitsHeader::ValueType::tchar32; std::memset(fh.cval, 0,
-FITS_HEADER_VALUE_CHARS); std::strcpy(fh.cval, val); return fh;
-}
-template<> FitsHeader create_fits_header<int>(const char* key, int val, const
-char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key, comment); fh.type =
-FitsHeader::ValueType::tint; fh.ival = val; return fh;
-}
-template<> FitsHeader create_fits_header<float>(const char* key, float val,
-const char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key, comment);
-    fh.type = FitsHeader::ValueType::tfloat;
-    fh.fval = val;
-    return fh;
-}
-template<> FitsHeader create_fits_header<double>(const char* key, double val,
-const char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key, comment);
-    fh.type = FitsHeader::ValueType::tdouble;
-    fh.dval = val;
-    return fh;
-}
-template<> FitsHeader create_fits_header<unsigned>(const char* key, unsigned
-val, const char* comment) noexcept { FitsHeader fh; fh.cpy_chars(key, comment);
-    fh.type = FitsHeader::ValueType::tfloat;
-    fh.fval = val;
-    return fh;
-}
-*/
 FitsHeader create_fits_header(const char *key, const char *val,
                               const char *comment) noexcept;
 FitsHeader create_fits_header(const char *key, int val,
@@ -111,6 +54,8 @@ FitsHeader create_fits_header(const char *key, double val,
                               const char *comment) noexcept;
 FitsHeader create_fits_header(const char *key, unsigned val,
                               const char *comment) noexcept;
+FitsHeader create_fits_header(const char *key, long val,
+                              const char *comment) noexcept;
 
 struct FitsHeaders {
   std::vector<FitsHeader> mvec;
@@ -120,19 +65,7 @@ struct FitsHeaders {
   void clear() noexcept { mvec.clear(); }
 
   int merge(const std::vector<FitsHeader> &hvec,
-            bool stop_if_error) noexcept; /* {
-int error = 0;
-for (const auto& hdr : hvec) {
-int failed = this->update(hdr);
-if (failed < 0) {
-if (stop_if_error) return -1;
-else {
-error += failed;
-}
-}
-}
-return error;
-}*/
+            bool stop_if_error) noexcept;
 
   int update(const FitsHeader &hdr) noexcept;
 
@@ -140,23 +73,6 @@ return error;
   int update(const char *ikey, T tval, const char *icomment) noexcept {
     FitsHeader fh = create_fits_header(ikey, tval, icomment);
     return this->update(fh);
-    /*
-    auto it =
-        std::find_if(mvec.begin(), mvec.end(), [&](const FitsHeader &hdr) {
-          return !std::strcmp(hdr.key, fh.key);
-        });
-
-    if (it == mvec.end()) {
-      mvec.emplace_back(fh);
-      return 1;
-    } else if (it->type == fh.type &&
-               it->type != FitsHeader::ValueType::unknown) {
-      *it = fh;
-      return 0;
-    } else {
-      return -1;
-    }
-    */
   }
 
   /// @brief Like update but checks nothing! use with care!

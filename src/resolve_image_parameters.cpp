@@ -22,6 +22,10 @@
 /// * --exposure [FLOAT] exposure time in seconds
 /// * --ar-tries [INT] number of tries to access Aristarchos headers (0 means
 ///     do not try at all)
+/// * --object [STRING] Name of object; this will be writeen (as is) in the
+///     FITS file header
+/// * --filter [STRING] Name of filter; this will be writeen (as is) in the
+///     FITS file header
 ///
 /// @param[in] command A c-string holding the command to resolve; the string
 ///                    should start with the "image" token and hold as many
@@ -39,6 +43,12 @@ int resolve_image_parameters(const char *command,
   /* first string should be "image" */
   if (std::strncmp(command, "image", 5))
     return 1;
+
+  printf("-----> resolving image parameters ...\n");
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at start readoutmode is different!\n");
+    return 4;
+  }
 
   /* datetime string buffer */
   char buf[32];
@@ -73,6 +83,7 @@ int resolve_image_parameters(const char *command,
       }
       if (params.num_images_ > 1) {
         params.acquisition_mode_ = AcquisitionMode::RunTillAbort;
+        // params.acquisition_mode_ = AcquisitionMode::KineticSeries;
         printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n", date_str(buf),
                AcquisitionMode2int(params.acquisition_mode_));
       } else if (params.num_images_ == 1) {
@@ -197,6 +208,10 @@ int resolve_image_parameters(const char *command,
                 date_str(buf), token, __func__);
         return 1;
       }
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different! a if\n");
+    return 4;
+  }
 
       /* IMAGE FILENAME
        * --------------------------------------------------------*/
@@ -214,8 +229,12 @@ int resolve_image_parameters(const char *command,
                 date_str(buf), token, __func__);
         return 1;
       }
-      std::memset(params.image_filename_, '\0', MAX_FITS_FILE_SIZE);
+      std::memset(params.image_filename_, '\0', MAX_FITS_FILENAME_SIZE);
       std::strcpy(params.image_filename_, token);
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different! a it\n");
+    return 4;
+  }
 
       /* IMAGE TYPE
        * --------------------------------------------------------*/
@@ -235,7 +254,58 @@ int resolve_image_parameters(const char *command,
       }
       std::memset(params.type_, '\0', MAX_IMAGE_TYPE_CHARS);
       std::strcpy(params.type_, token);
+      
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different! a ot\n");
+    return 4;
+  }
+      /* OBJECT TYPE
+       * --------------------------------------------------------*/
+    } else if (!std::strncmp(token, "--object", 8)) {
+      if (token = std::strtok(nullptr, " "); token == nullptr) {
+        fprintf(stderr,
+                "[ERROR][%s] Must provide a string argument to \"--object\" "
+                "(traceback: %s)\n",
+                date_str(buf), __func__);
+        return 1;
+      }
+      if (std::strlen(token) >= MAX_OBJECT_NAME_CHARS) {
+        fprintf(stderr,
+                "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
+                date_str(buf), token, __func__);
+        return 1;
+      }
+      std::memset(params.object_name_, '\0', MAX_OBJECT_NAME_CHARS);
+      std::strcpy(params.object_name_, token);
+  
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different! a fn\n");
+    return 4;
+  }
+      
+      /* FILTER NAME
+       * --------------------------------------------------------*/
+    } else if (!std::strncmp(token, "--filter", 8)) {
+      if (token = std::strtok(nullptr, " "); token == nullptr) {
+        fprintf(stderr,
+                "[ERROR][%s] Must provide a string argument to \"--filter\" "
+                "(traceback: %s)\n",
+                date_str(buf), __func__);
+        return 1;
+      }
+      if (std::strlen(token) >= MAX_FILTER_NAME_CHARS) {
+        fprintf(stderr,
+                "[ERROR][%s] Invalid argument for \"%s\" (traceback: %s)\n",
+                date_str(buf), token, __func__);
+        return 1;
+      }
+      std::memset(params.filter_name_, '\0', MAX_FILTER_NAME_CHARS);
+      std::strcpy(params.filter_name_, token);
 
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different! a e\n");
+    return 4;
+  }
       /* EXPOSURE
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--exposure", 10)) {
@@ -316,6 +386,16 @@ int resolve_image_parameters(const char *command,
         "[ERROR][%s] Exposure must be a positive real number (traceback: %s)\n",
         date_str(buf), __func__);
     status = 2;
+  }
+
+  // TODO why the fuck do i need this here?
+  std::memset(params.save_dir_, 0, 128);
+  std::strcpy(params.save_dir_, "/home/andor2k/fits");
+  
+  printf("-----> resolved image parameters ...\n");
+  if (params.read_out_mode_ != ReadOutMode::Image) {
+    printf("-----> WTF at end readoutmode is different!\n");
+    return 4;
   }
 
   return status;

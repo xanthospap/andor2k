@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <thread>
+#include <algorithm>
 
 using namespace std::chrono_literals;
 
@@ -19,8 +20,16 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
                  int xpixels, int ypixels, at_32 *img_buffer) noexcept;
 int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
                      int xpixels, int ypixels, at_32 *img_buffer) noexcept;
-int get_rta_scan2(const AndorParameters *params, FitsHeaders *fheaders,
-                  int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+
+int find_start_time_cor(const FitsHeaders *fheaders, long& correction_ns) noexcept {
+  auto it = std::find_if(fheaders->mvec.begin(), fheaders->mvec.end(), [&](const FitsHeader& f){ return !std::strcmp(f.key, "TIMECORR");});
+  if (it != fheaders->mvec.cend()) {
+    correction_ns = it->lval;
+    return 0;
+  }
+  correction_ns = 0;
+  return 1;
+}
 
 /// @brief Setup and get an acquisition (single or multiple scans)
 /// The function will:
@@ -42,6 +51,13 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                     at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
+  #ifdef DEBUG
+  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL %d\n", date_str(buf), __func__, (void*)&img_buffer, (int)(img_buffer==nullptr));
+  #endif
+  if (img_buffer == nullptr) {
+    fprintf(stderr, "[ERROR][%s] Memory location for images storage points to nowhere! (traceback: %s)\n", date_str(buf), __func__);
+    return 1;
+  }
 
   /* depending on acquisition mode, acquire the exposure(s) */
   int acq_status = 0;
@@ -309,118 +325,6 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
   return 0;
 }
 
-/// @brief Get/Save a Run Till Abort acquisition to FITS format
-/// The function will perform the following:
-/// * StartAcquisition
-/// * GetAcquiredData
-/// * Save to FITS file (using int32_t)
-/// @param[in] params Currently not used in the function
-/// @param[in] xpixels Number of x-axis pixels, aka width
-/// @param[in] ypixels Number of y-axis pixels, aka height
-/// @param[in] img_buffer An array of int32_t large enough to hold
-///                    xpixels*ypixels elements
-int get_rta_scan2(const AndorParameters *params, FitsHeaders *fheaders,
-                  int xpixels, int ypixels, at_32 *img_buffer) noexcept {
-
-  char buf[32] = {'\0'};                  /* buffer for datetime string */
-  char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
-
-  /* start acquisition(s) */
-  printf("[DEBUG][%s] Starting (%d) image acquisitions ...\n", date_str(buf),
-         params->num_images_);
-  StartAcquisition();
-
-  unsigned int error;
-  int images_remaining = params->num_images_;
-  int buffer_images_remaining = 0;
-  int buffer_images_retrieved = 0;
-  int status;
-  at_32 series = 0, first, last;
-
-  GetTotalNumberImagesAcquired(&series);
-
-  GetStatus(&status);
-  auto acq_start_t = std::chrono::high_resolution_clock::now();
-  while ((status == DRV_ACQUIRING && images_remaining > 0) ||
-         buffer_images_remaining > 0) {
-    auto nowt1 = std::chrono::high_resolution_clock::now();
-    auto elapsed_time_sec1 =
-        std::chrono::duration_cast<std::chrono::seconds>(nowt1 - acq_start_t);
-    printf("[DEBUG][%s] Ellapsed time acquiring %10ld seconds; current series "
-           "%d buf. images retrieved %d buf images remaining %d\n",
-           date_str(buf), elapsed_time_sec1.count(), series,
-           buffer_images_retrieved, buffer_images_remaining);
-    if (images_remaining == 0)
-      error = AbortAcquisition();
-
-    GetTotalNumberImagesAcquired(&series);
-
-    if (GetNumberNewImages(&first, &last) == DRV_SUCCESS) {
-      buffer_images_remaining = last - first;
-      images_remaining = params->num_images_ - series;
-
-      error = GetOldestImage(img_buffer, xpixels * ypixels);
-
-      if (error == DRV_P2INVALID || error == DRV_P1INVALID) {
-        fprintf(stderr,
-                "[ERROR][%s] Acquisition error, nr #%d (traceback: %s)\n",
-                date_str(buf), error, __func__);
-        fprintf(stderr, "[ERROR][%s] Aborting acquisition.\n", date_str(buf));
-        AbortAcquisition();
-      }
-
-      if (error == DRV_SUCCESS) {
-        ++buffer_images_retrieved;
-        get_next_fits_filename(params, fits_filename);
-        FitsImage<int32_t> fits(fits_filename, xpixels, ypixels);
-        if (fits.write<at_32>(img_buffer)) {
-          fprintf(stderr,
-                  "[ERROR][%s] Failed writting data to FITS file (traceback: "
-                  "%s)!\n",
-                  date_str(buf), __func__);
-          AbortAcquisition();
-          // return 15;
-        } else {
-          printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
-                 fits_filename);
-        }
-        if (fits.apply_headers(*fheaders, false) < 0) {
-          fprintf(stderr,
-                  "[WRNNG][%s] Some headers not applied in FITS file! Should "
-                  "inspect file (traceback: %s)\n",
-                  date_str(buf), __func__);
-        }
-        fits.close();
-      }
-    }
-
-    // abort after full number of images taken
-    if (series >= params->num_images_) {
-      printf("[DEBUG][%s] Succesefully acquired all images (aka %d)\n",
-             date_str(buf), series);
-      AbortAcquisition();
-    }
-
-    GetStatus(&status);
-    auto nowt = std::chrono::high_resolution_clock::now();
-    auto elapsed_time_sec =
-        std::chrono::duration_cast<std::chrono::seconds>(nowt - acq_start_t);
-    /*if (elapsed_time_sec > 3 * 60 * 1000) {
-      fprintf(stderr, "[ERROR][%s] Aborting acquisition cause it took too much
-    time! (traceback: %s)\n", date_str(buf), __func__); AbortAcquisition();
-      GetStatus(&status);
-    }*/
-    GetStatus(&status);
-    printf("[DEBUG][%s] Ellapsed time acquiring %10ld seconds; current series "
-           "%d buf. images retrieved %d buf images remaining %d\n",
-           date_str(buf), elapsed_time_sec.count(), series,
-           buffer_images_retrieved, buffer_images_remaining);
-    std::this_thread::sleep_for(1000ms);
-  }
-
-  return 0;
-}
-
 /// @brief Get/Save a single scan acquisitionto FITS format
 /// The function will perform the following:
 /// * StartAcquisition
@@ -436,6 +340,22 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
+  
+  #ifdef DEBUG
+  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL %d\n", date_str(buf), __func__, (void*)&img_buffer, (int)(img_buffer==nullptr));
+  #endif
+  if (img_buffer == nullptr) {
+    fprintf(stderr, "[ERROR][%s] Memory location for images storage points to nowhere! (traceback: %s)\n", date_str(buf), __func__);
+    return 1;
+  }
+  
+  // get start time correction in nanoseconds from headers (should have already 
+  // been computed)
+  long start_time_corr;
+  if (find_start_time_cor(fheaders, start_time_corr)) {
+    fprintf(stderr, "[ERROR][%s] Failed to find TIMECORR header in the list! It should be there (traceback: %s)\n", date_str(buf), __func__);
+    return 1;
+  }
 
   // start acquisition and get date
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
@@ -443,7 +363,13 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   #ifdef DEBUG
   auto at_start = std::chrono::high_resolution_clock::now();
   #endif
-  StartAcquisition();
+  if (unsigned error = StartAcquisition(); error != DRV_SUCCESS) {
+    char acq_str[MAX_STATUS_STRING_SIZE];
+    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is:\n", date_str(buf));
+    fprintf(stderr, "[ERROR][%s] %s", date_str(buf), get_start_acquisition_status_string(error, acq_str));
+    AbortAcquisition();
+    return 1;
+  }
   #ifdef DEBUG
   char xbuf[64];
   printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
@@ -460,12 +386,27 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
   #endif
 
-  /* get acquired data (from camera buffer) */
+  #ifdef USE_USHORT
+  unsigned short *uimg_buffer = new unsigned short[xpixels*ypixels];
+  printf("[WRNNG][%s] Using the unsigned short version because of no binning!\n", date_str(buf));
+  unsigned int error = GetAcquiredData16(uimg_buffer, xpixels*ypixels);
+  #else
   unsigned int error = GetAcquiredData(img_buffer, xpixels * ypixels);
+  #endif
+
   #ifdef DEBUG
   at_start = std::chrono::high_resolution_clock::now();
   printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
   #endif
+
+  // start of exposure time point is now, minus the correction
+  auto dtnow = std::chrono::high_resolution_clock::now();
+  dtnow -= std::chrono::milliseconds(start_time_corr);
+  char tbuf[64];
+  strfdt<DateTimeFormart::YMD>(dtnow, tbuf);
+  fheaders->update("DATE", tbuf, "Date of exposure start");
+  strfdt<DateTimeFormart::HMfS>(dtnow, tbuf);
+  fheaders->update("DATE", tbuf, "UT time of exposure time");
 
   /* check for errors */
   int retstat = 0;
@@ -518,6 +459,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     }
     /* an error occured */
     AbortAcquisition();
+    #ifdef USE_USHORT
+    delete[] uimg_buffer;
+    #endif
     return retstat;
   }
 
@@ -528,24 +472,29 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             "(traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
+    #ifdef USE_USHORT
+    delete[] uimg_buffer;
+    #endif
     return 1;
   }
 
   printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...\n",
          date_str(buf), fits_filename);
 
-  /*
-  if (SaveAsFITS(fits_filename, 3) != DRV_SUCCESS)
-    fprintf(stderr, "\n[ERROR][%s] Failed to save image to fits format!
-  (traceback: %s)\n", date_str(buf), __func__);
-  */
-
   /* Create a FITS file and save the image at it */
+  #ifdef USE_USHORT
+  FitsImage<uint16_t> fits(fits_filename, xpixels, ypixels);
+  if (fits.write<at_u16>(uimg_buffer)) {
+  #else
   FitsImage<int32_t> fits(fits_filename, xpixels, ypixels);
   if (fits.write<at_32>(img_buffer)) {
+  #endif
     fprintf(stderr,
             "[ERROR][%s] Failed writting data to FITS file (traceback: %s)!\n",
             date_str(buf), __func__);
+    #ifdef USE_USHORT
+    delete[] uimg_buffer;
+    #endif
     return 15;
   } else {
     printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
@@ -559,6 +508,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   }
   fits.close();
 
+    #ifdef USE_USHORT
+    delete[] uimg_buffer;
+    #endif
   /* all done */
   return 0;
 }

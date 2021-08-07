@@ -4,9 +4,7 @@
 #include "fits_header.hpp"
 #include <cstdio>
 #include <cstring>
-
-double start_time_correction(float exposure, float vsspeed, float hsspeed,
-                             int img_rows, int img_cols) noexcept;
+#include "andor_time_utils.hpp"
 
 /// @brief Setup an acquisition (single or multiple scans).
 /// The function will:
@@ -45,7 +43,7 @@ double start_time_correction(float exposure, float vsspeed, float hsspeed,
 ///   times to be used
 int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                       int &width, int &height, float &vsspeed, float &hsspeed,
-                      at_32 *img_mem) noexcept {
+                      at_32 *&img_mem) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
 
@@ -167,56 +165,85 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   }
   int herror;
   herror = fheaders->update<float>(
-      "HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
+      "HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)"); // 1
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for HSSPEED\n", date_str(buf));
   herror = fheaders->update<float>(
-      "VSSPEED", hsspeed, "Vertical Shift Speed (microsec / pixel shift)");
+      "VSSPEED", vsspeed, "Vertical Shift Speed (microsec / pixel shift)"); // 2
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for VSSPEED\n", date_str(buf));
   herror = fheaders->update<float>("EXPOSED", actual_exposure,
-                                   "Requested exposure time (sec)");
+                                   "Requested exposure time (sec)"); // 3
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for EXPOSED\n", date_str(buf));
   herror = fheaders->update<float>("EXPTIME", actual_exposure,
-                                   "Requested exposure time (sec)");
-  herror = fheaders->update<int>("NXAXIS1", xnumpixels, "Image width (pixels)");
+                                   "Requested exposure time (sec)"); // 4
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for EXPTIME\n", date_str(buf));
   herror =
-      fheaders->update<int>("NXAXIS2", ynumpixels, "Image height (pixels)");
+      fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning"); // 7
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for VBIN\n", date_str(buf));
   herror =
-      fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
+      fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for HBIN\n", date_str(buf));
   herror =
-      fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
-  /* compute the start time correction for the headers */
-  double start_time_cor = start_time_correction(
+      fheaders->update("INSTRUME", "ANDOR2048x2048_BV", "Instrument used to acquire data"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for INSTRUME\n", date_str(buf));
+      fheaders->update("OBJECT", params->object_name_, "Object identifier"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for INSTRUME\n", date_str(buf));
+      fheaders->update("FILTER", params->filter_name_, "Filter used"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for FILTER\n", date_str(buf));
+      fheaders->update("ORIGIN", "NOA -- Mt. Chelmos", "Observatory"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for ORIGIN\n", date_str(buf));
+      fheaders->update("TELESCOP", "Aristarchos", "Telescope used to acquire data"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for TELESCOP\n", date_str(buf));
+      fheaders->update<float>("HEIGHT", 2326.0, "height above sea level [m]"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for HEIGHT\n", date_str(buf));
+      fheaders->update("LATITUDE", "+37:59:35.30", "Telescope latitude dd:mm:ss"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for LATITUDE\n", date_str(buf));
+      fheaders->update("LONGITUD", "022:12:32.50", "Telescope longitude dd:mm:ss"); // 8
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for LONGITUDE\n", date_str(buf));
+  // compute the start time correction for the headers
+  auto start_time_cor = start_time_correction(
       actual_exposure, vsspeed, hsspeed, ynumpixels, xnumpixels);
-  herror = fheaders->update<unsigned>(
-      "TIMECORR", static_cast<unsigned>(start_time_cor),
-      "Timming correction already applied (nanosec)");
-  /* get the camera's temperature for reporting in header */
+  herror = fheaders->update<long>(
+      "TIMECORR", start_time_cor.count(),
+      "Timming correction already applied (nanosec)"); // 9
+  if (herror<0) fprintf(stderr,"[WRNNG][%s] Failed to update header for TIMECORR\n", date_str(buf));
+  // get the camera's temperature for reporting in header
   float tempf;
   if (GetTemperatureF(&tempf) != DRV_TEMP_STABILIZED) {
     fprintf(stderr,
             "[ERROR][%s] Tried to get temperature for headers, but did not get "
             "a stabilized one! (traceback %s)\n",
             date_str(buf), __func__);
-    return 10;
+    // return 10;
+  } else {
+    herror = fheaders->update<float>("CCDTEMP", tempf,
+                                   "CCD temp at start of exposure degC"); // 10
+    if (herror<0) fprintf(stderr, "[WRNNG][%s] Failed to update header for CCDTEMP\n", date_str(buf));
   }
-  herror = fheaders->update<float>("CCDTEMP", tempf,
-                                   "CCD temp at start of exposure degC");
 
   if (herror != 10) {
     fprintf(stderr,
             "[ERROR][%s] Failed to add one or more headers to the list! "
             "(traceback: %s)\n",
             date_str(buf), __func__);
-    return 3;
+    // return 3;
   }
 
   /* allocate memory to (temporarily) hold the image data */
   long image_pixels = xnumpixels * ynumpixels;
+  img_mem = nullptr;
   img_mem = new at_32[image_pixels];
+  if (img_mem==nullptr) {
+    fprintf(stderr, "[ERROR][%s] Failed to allocate memory for the image (%ld)! (traceback: %s)\n", date_str(buf), image_pixels, __func__);
+    return 1;
+  }
+  printf("[DEBUG][%s] Allocated memory for image; size is %d*%d=%ld (adress: %p)\n", date_str(buf), xnumpixels, ynumpixels, image_pixels, (void*)&img_mem);
 
   /* gcc wants smthng to be done with img_mem else it complains about an
    * unused variable; do something!
    */
 #ifdef __GNUC__
 #ifndef __clang__
-  std::memset(img_mem, 0, image_pixels * sizeof(at_32));
+  std::memset(img_mem, 1, image_pixels * sizeof(at_32));
 #endif
 #endif
 

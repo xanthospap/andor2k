@@ -15,37 +15,44 @@ template <typename T> struct cfitsio_bitpix {};
 template <> struct cfitsio_bitpix<int8_t> {
   static constexpr int bitpix = 8;
   static constexpr int bscale = 1;
-  // static constexpr int8_t bzero = -128;
+  static constexpr int8_t bzero = -128;
+  static_assert(std::numeric_limits<int8_t>::min() <= bzero);
 };
 template <> struct cfitsio_bitpix<uint16_t> {
   static constexpr int bitpix = 16;
   static constexpr int bscale = 1;
-  // static constexpr uint16_t bzero = 32768;
+  static constexpr uint16_t bzero = 32768;
+  static_assert(std::numeric_limits<uint16_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<int16_t> {
   static constexpr int bitpix = 16;
   static constexpr int bscale = 1;
   // static constexpr int16_t bzero = 32768;
+  // static_assert(std::numeric_limits<int16_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<uint32_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  // static constexpr uint32_t bzero = 2147483648;
+  static constexpr uint32_t bzero = 2147483648;
+  static_assert(std::numeric_limits<uint32_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<int32_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  // static constexpr int32_t bzero = 2147483648;
+  // static constexpr int32_t bzero = 2147483648; 
+  // static_assert(std::numeric_limits<int32_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<uint64_t> {
   static constexpr int bitpix = 64;
   static constexpr int bscale = 1;
   // static constexpr uint64_t bzero = 9223372036854775808;
+  // static_assert(std::numeric_limits<uint64_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<int64_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  // static constexpr int64_t bzero = 2147483648;
+  static constexpr int64_t bzero = 2147483648;
+  static_assert(std::numeric_limits<int64_t>::max() >= bzero);
 };
 template <typename T> struct cfitsio_type {};
 template <> struct cfitsio_type<signed short> {
@@ -66,10 +73,6 @@ template <> struct cfitsio_type<signed long> {
 template <> struct cfitsio_type<unsigned long> {
   static constexpr int type = TULONG;
 };
-
-/*template <> struct cfitsio_type<const char*> {
-  static constexpr int type =  TSTRING;
-};*/
 
 template <> struct cfitsio_type<float> { static constexpr int type = TFLOAT; };
 template <> struct cfitsio_type<double> {
@@ -138,6 +141,7 @@ public:
       fits_report_error(stderr, status);
     return status;
   }
+  
   int update_key(const char *keyname, char (&value)[FITS_HEADER_VALUE_CHARS],
                  const char *comment) noexcept {
     int status = 0;
@@ -148,16 +152,6 @@ public:
       fits_report_error(stderr, status);
     return status;
   }
-  /*
-  int update_key(const char* keyname, char value[FITS_HEADER_VALUE_CHARS], const
-  char* comment) noexcept { int status = 0; char cval[FITS_HEADER_VALUE_CHARS];
-    std::memset(cval, 0, FITS_HEADER_VALUE_CHARS);
-    std::strcpy(cval, value);
-    if (fits_update_key(fptr, TSTRING, keyname, cval, comment,
-                        &status))
-      fits_report_error(stderr, status);
-    return status;
-  }*/
 
   /// @note headers is actually a const parameter, but ... legacy C
   int apply_headers(FitsHeaders &headers, bool stop_if_error) noexcept {
@@ -165,6 +159,7 @@ public:
     int hdr_errors = 0;
     int status;
     for (auto &hdr : headers.mvec) {
+      printf("[DEBUG] Applying header %s ...", hdr.key);
       switch (hdr.type) {
       case FitsHeader::ValueType::tchar32:
         status = this->update_key(hdr.key, hdr.cval, hdr.comment);
@@ -186,10 +181,14 @@ public:
       }
       if (status < -99 || (status < 0 && stop_if_error))
         return status;
-      if (status < 0)
+      if (status < 0) {
+        printf("failed!\n");
         --hdr_errors;
-      else if (status > 0)
+      }
+      else if (status > 0) {
+        printf("ok\n");
         ++hdr_applied;
+      }
     }
 
     return hdr_errors < 0 ? hdr_errors : hdr_applied;

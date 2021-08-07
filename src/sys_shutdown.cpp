@@ -26,6 +26,12 @@ int system_shutdown() noexcept {
   int current_temp;
   char buf[32] = {'\0'}; /* buffer for datetime string */
 
+  int stat;
+  GetStatus(&stat);
+  if (stat == DRV_ACQUIRING) AbortAcquisition();
+  char status_str[MAX_STATUS_STRING_SIZE];
+  printf("[DEBUG][%s] Shutting down camera; last know state was: %s\n", date_str(buf), get_status_string(status_str));
+
   // get temperature for reporting
   GetTemperature(&current_temp);
   printf("[DEBUG][%s] Shutting down system ... (temperatue: %+3dC)\n",

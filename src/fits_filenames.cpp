@@ -4,6 +4,9 @@
 #include <filesystem>
 #include <optional>
 #include <system_error>
+#ifdef DEBUG
+#include <iostream>
+#endif
 
 namespace fs = std::filesystem;
 
