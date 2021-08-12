@@ -1,4 +1,5 @@
 #include "cpp_socket.hpp"
+#include "andor_time_utils.hpp"
 #include <cstring>
 #include <iostream>
 #include <thread>
@@ -6,10 +7,17 @@
 #include <chrono>
 #include <unistd.h>
 #include <csignal>
+#include <chrono>
 
 using namespace std::chrono_literals;
 using andor2k::ServerSocket;
 using andor2k::Socket;
+
+/* responses to client should of the type:
+ * TYPE:INFO;
+ * when command is done, always send the response:
+ * DONE;RETURN_VALUE
+ */
 
 char buff_main[1024];
 char buff_stat[1024];
@@ -19,36 +27,51 @@ int sabort = 0;
 int sintrp = 0;
 
 void shutdown(int status) noexcept {
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "command:shutdown;status:closing down deamon");
   printf("shutdown() called\n");
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "done;0");
   std::exit(status);
 }
 
 void set_abort(int signal) noexcept {
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "command:abort;status:aborting current work");
   printf("---> Signal caught: %d! setting abort\n", signal);
   // shutdown(signal);
   sabort = 1;
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "done;0");
 }
 
 void interrupt(int signal) noexcept {
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "command:abort;status:aborting current work");
   printf("---> Signal caught: %d! setting interrupt\n", signal);
   sintrp = 1;
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "done;0");
 }
 
-void do_work(const Socket& csock) {
+void set_temp(const Socket& csock) {
   doing_work = 1;
-  char sbuf[1024];
   
   printf("server doing work ....\n");
-  std::strcpy(sbuf, "server going to work");
-  csock.send(sbuf);
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "command:settemp;status:server going to work;time:");
+  strfdt<DateTimeFormat::YMDHMS>(std::chrono::system_clock::now(), buff_stat+47);
+  csock.send(buff_stat);
 
-  for (int i=0; i<7; ++i) {
-    std::this_thread::sleep_for(1000ms);
+  for (int i=0; i<6; i++) {
+    std::this_thread::sleep_for(4200ms);
     printf("\tworking ... for function: %s\n", __func__);
 
-    std::memset(sbuf, 0, 1024);
-    std::sprintf(sbuf, "Server doing work (%d/%d)", i, 7);
-    if (csock.send(sbuf)<0) {
+    std::memset(buff_stat, 0, 1024);
+    sprintf(buff_stat, "command:settemp;temp:%+d;status:server doing work (%d/%d);time:", -i*5+10, i, 7);
+    int end = std::strlen(buff_stat);
+    strfdt<DateTimeFormat::YMDHMS>(std::chrono::system_clock::now(), buff_stat+end);
+    if (csock.send(buff_stat)<0) {
       printf("------ ERROR failed to send message to client --\n");
     }
 
@@ -67,9 +90,59 @@ void do_work(const Socket& csock) {
   }
   doing_work = 0;
 
-  std::memset(sbuf, 0, 1024);
-  sprintf(sbuf, "done %d", 0);
-  if (csock.send(sbuf)<0) {
+  std::memset(buff_stat, 0, 1024);
+  sprintf(buff_stat, "done;%d", 0);
+  if (csock.send(buff_stat)<0) {
+    printf("------ ERROR failed to send message to client --\n");
+  }
+  printf("Server work done!\n");
+  return;
+}
+
+void do_work(const Socket& csock) {
+  doing_work = 1;
+
+  int nimages = 4;
+  
+  printf("server doing work ....\n");
+  printf("\tworking ... for function: %s\n", __func__);
+  
+  std::memset(buff_stat, 0, 1024);
+  std::strcpy(buff_stat, "command:image;status:server going to work;time:");
+  strfdt<DateTimeFormat::YMDHMS>(std::chrono::system_clock::now(), buff_stat+47);
+  csock.send(buff_stat);
+
+  for (int img = 1; img <= nimages; img++) {
+    for (int i=0; i<5; ++i) {
+      std::this_thread::sleep_for(4500ms);
+
+      std::memset(buff_stat, 0, 1024);
+      sprintf(buff_stat, "command:image;image:%d/%d;progperc:%d;status:server doing work (%d/%d);time:", img, nimages, (i+1)*20, i, 7);
+      int end = std::strlen(buff_stat);
+      strfdt<DateTimeFormat::YMDHMS>(std::chrono::system_clock::now(), buff_stat+end);
+      if (csock.send(buff_stat)<0) {
+        printf("------ ERROR failed to send message to client --\n");
+      }
+
+      if (sabort) {
+        printf("\tdone;info:stop working now! sabort set!\n");
+        doing_work = 0;
+        return;
+      }
+
+      if (sintrp) {
+        printf("\tdone;info:stop working now! interupt set!\n");
+        doing_work = 0;
+        sintrp = 0;
+        return;
+      }
+    }
+  }
+  doing_work = 0;
+
+  std::memset(buff_stat, 0, 1024);
+  sprintf(buff_stat, "done;%d", 0);
+  if (csock.send(buff_stat)<0) {
     printf("------ ERROR failed to send message to client --\n");
   }
   printf("Server work done!\n");
@@ -93,6 +166,9 @@ void chat(const Socket &socket) { /* MAIN CHAT */
     // do some work
     if (!std::strncmp(buff_main, "image", 5))
       do_work(socket);
+    
+    if (!std::strncmp(buff_main, "settemp", 7))
+      set_temp(socket);
 
     if (sabort) {
       printf("abort set; leaving main chat!\n");

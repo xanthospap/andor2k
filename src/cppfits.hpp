@@ -39,7 +39,7 @@ template <> struct cfitsio_bitpix<uint32_t> {
 template <> struct cfitsio_bitpix<int32_t> {
   static constexpr int bitpix = 32;
   static constexpr int bscale = 1;
-  // static constexpr int32_t bzero = 2147483648; 
+  // static constexpr int32_t bzero = 2147483648;
   // static_assert(std::numeric_limits<int32_t>::max() >= bzero);
 };
 template <> struct cfitsio_bitpix<uint64_t> {
@@ -141,7 +141,7 @@ public:
       fits_report_error(stderr, status);
     return status;
   }
-  
+
   int update_key(const char *keyname, char (&value)[FITS_HEADER_VALUE_CHARS],
                  const char *comment) noexcept {
     int status = 0;
@@ -184,8 +184,7 @@ public:
       if (status < 0) {
         printf("failed!\n");
         --hdr_errors;
-      }
-      else if (status > 0) {
+      } else if (status > 0) {
         printf("ok\n");
         ++hdr_applied;
       }

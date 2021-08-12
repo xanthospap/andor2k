@@ -155,6 +155,7 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
 
-char* get_status_string(char *buf) noexcept;
-char* get_start_acquisition_status_string(unsigned int error, char *buffer) noexcept;
+char *get_status_string(char *buf) noexcept;
+char *get_start_acquisition_status_string(unsigned int error,
+                                          char *buffer) noexcept;
 #endif

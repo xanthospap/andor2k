@@ -2,12 +2,12 @@
 #include "andor_time_utils.hpp"
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
+#include <algorithm>
 #include <chrono>
 #include <cppfits.hpp>
 #include <cstdio>
 #include <cstring>
 #include <thread>
-#include <algorithm>
 
 using namespace std::chrono_literals;
 
@@ -21,8 +21,11 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
 int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
                      int xpixels, int ypixels, at_32 *img_buffer) noexcept;
 
-int find_start_time_cor(const FitsHeaders *fheaders, long& correction_ns) noexcept {
-  auto it = std::find_if(fheaders->mvec.begin(), fheaders->mvec.end(), [&](const FitsHeader& f){ return !std::strcmp(f.key, "TIMECORR");});
+int find_start_time_cor(const FitsHeaders *fheaders,
+                        long &correction_ns) noexcept {
+  auto it = std::find_if(
+      fheaders->mvec.begin(), fheaders->mvec.end(),
+      [&](const FitsHeader &f) { return !std::strcmp(f.key, "TIMECORR"); });
   if (it != fheaders->mvec.cend()) {
     correction_ns = it->lval;
     return 0;
@@ -51,11 +54,17 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                     at_32 *img_buffer) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
-  #ifdef DEBUG
-  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL %d\n", date_str(buf), __func__, (void*)&img_buffer, (int)(img_buffer==nullptr));
-  #endif
+#ifdef DEBUG
+  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL "
+         "%d\n",
+         date_str(buf), __func__, (void *)&img_buffer,
+         (int)(img_buffer == nullptr));
+#endif
   if (img_buffer == nullptr) {
-    fprintf(stderr, "[ERROR][%s] Memory location for images storage points to nowhere! (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Memory location for images storage points to nowhere! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     return 1;
   }
 
@@ -340,40 +349,52 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   char buf[32] = {'\0'};                  /* buffer for datetime string */
   char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
-  
-  #ifdef DEBUG
-  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL %d\n", date_str(buf), __func__, (void*)&img_buffer, (int)(img_buffer==nullptr));
-  #endif
+
+#ifdef DEBUG
+  printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL "
+         "%d\n",
+         date_str(buf), __func__, (void *)&img_buffer,
+         (int)(img_buffer == nullptr));
+#endif
   if (img_buffer == nullptr) {
-    fprintf(stderr, "[ERROR][%s] Memory location for images storage points to nowhere! (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Memory location for images storage points to nowhere! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     return 1;
   }
-  
-  // get start time correction in nanoseconds from headers (should have already 
+
+  // get start time correction in nanoseconds from headers (should have already
   // been computed)
   long start_time_corr;
   if (find_start_time_cor(fheaders, start_time_corr)) {
-    fprintf(stderr, "[ERROR][%s] Failed to find TIMECORR header in the list! It should be there (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to find TIMECORR header in the list! It should "
+            "be there (traceback: %s)\n",
+            date_str(buf), __func__);
     return 1;
   }
 
   // start acquisition and get date
   printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
 
-  #ifdef DEBUG
+#ifdef DEBUG
   auto at_start = std::chrono::high_resolution_clock::now();
-  #endif
+#endif
   if (unsigned error = StartAcquisition(); error != DRV_SUCCESS) {
     char acq_str[MAX_STATUS_STRING_SIZE];
-    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is:\n", date_str(buf));
-    fprintf(stderr, "[ERROR][%s] %s", date_str(buf), get_start_acquisition_status_string(error, acq_str));
+    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is:\n",
+            date_str(buf));
+    fprintf(stderr, "[ERROR][%s] %s", date_str(buf),
+            get_start_acquisition_status_string(error, acq_str));
     AbortAcquisition();
     return 1;
   }
-  #ifdef DEBUG
+#ifdef DEBUG
   char xbuf[64];
-  printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
-  #endif
+  printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n",
+         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
+#endif
 
   /* get status and loop until acquisition finished */
   int status;
@@ -381,31 +402,35 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   while (status == DRV_ACQUIRING)
     GetStatus(&status);
-  #ifdef DEBUG
+#ifdef DEBUG
   at_start = std::chrono::high_resolution_clock::now();
-  printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
-  #endif
+  printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n",
+         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
+#endif
 
-  #ifdef USE_USHORT
-  unsigned short *uimg_buffer = new unsigned short[xpixels*ypixels];
-  printf("[WRNNG][%s] Using the unsigned short version because of no binning!\n", date_str(buf));
-  unsigned int error = GetAcquiredData16(uimg_buffer, xpixels*ypixels);
-  #else
+#ifdef USE_USHORT
+  unsigned short *uimg_buffer = new unsigned short[xpixels * ypixels];
+  printf(
+      "[WRNNG][%s] Using the unsigned short version because of no binning!\n",
+      date_str(buf));
+  unsigned int error = GetAcquiredData16(uimg_buffer, xpixels * ypixels);
+#else
   unsigned int error = GetAcquiredData(img_buffer, xpixels * ypixels);
-  #endif
+#endif
 
-  #ifdef DEBUG
+#ifdef DEBUG
   at_start = std::chrono::high_resolution_clock::now();
-  printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n", date_str(buf), strfdt<DateTimeFormart::YMDHMfS>(at_start, xbuf));
-  #endif
+  printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n",
+         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
+#endif
 
   // start of exposure time point is now, minus the correction
   auto dtnow = std::chrono::high_resolution_clock::now();
   dtnow -= std::chrono::milliseconds(start_time_corr);
   char tbuf[64];
-  strfdt<DateTimeFormart::YMD>(dtnow, tbuf);
+  strfdt<DateTimeFormat::YMD>(dtnow, tbuf);
   fheaders->update("DATE", tbuf, "Date of exposure start");
-  strfdt<DateTimeFormart::HMfS>(dtnow, tbuf);
+  strfdt<DateTimeFormat::HMfS>(dtnow, tbuf);
   fheaders->update("DATE", tbuf, "UT time of exposure time");
 
   /* check for errors */
@@ -459,9 +484,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     }
     /* an error occured */
     AbortAcquisition();
-    #ifdef USE_USHORT
+#ifdef USE_USHORT
     delete[] uimg_buffer;
-    #endif
+#endif
     return retstat;
   }
 
@@ -472,29 +497,29 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             "(traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
-    #ifdef USE_USHORT
+#ifdef USE_USHORT
     delete[] uimg_buffer;
-    #endif
+#endif
     return 1;
   }
 
   printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...\n",
          date_str(buf), fits_filename);
 
-  /* Create a FITS file and save the image at it */
-  #ifdef USE_USHORT
+/* Create a FITS file and save the image at it */
+#ifdef USE_USHORT
   FitsImage<uint16_t> fits(fits_filename, xpixels, ypixels);
   if (fits.write<at_u16>(uimg_buffer)) {
-  #else
+#else
   FitsImage<int32_t> fits(fits_filename, xpixels, ypixels);
   if (fits.write<at_32>(img_buffer)) {
-  #endif
+#endif
     fprintf(stderr,
             "[ERROR][%s] Failed writting data to FITS file (traceback: %s)!\n",
             date_str(buf), __func__);
-    #ifdef USE_USHORT
+#ifdef USE_USHORT
     delete[] uimg_buffer;
-    #endif
+#endif
     return 15;
   } else {
     printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
@@ -508,9 +533,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   }
   fits.close();
 
-    #ifdef USE_USHORT
-    delete[] uimg_buffer;
-    #endif
+#ifdef USE_USHORT
+  delete[] uimg_buffer;
+#endif
   /* all done */
   return 0;
 }

@@ -32,23 +32,25 @@ constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
-char
-    buffer[SOCKET_BUFFER_SIZE];
+char buffer[SOCKET_BUFFER_SIZE];
 
 // ANDOR2K parameters controlling usage
 AndorParameters params;
 
 /// @brief Signal handler to kill daemon (calls shutdown() and then exits)
 void kill_daemon(int signal) noexcept {
-  printf("[DEBUG][%s] Caught signal (#%d); shutting down daemon (traceback: %s)\n",
-         date_str(now_str), signal, __func__);
+  printf(
+      "[DEBUG][%s] Caught signal (#%d); shutting down daemon (traceback: %s)\n",
+      date_str(now_str), signal, __func__);
   system_shutdown(); // RUN
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
   exit(signal);
 }
 /// @brief Signal handler for SEGFAULT (calls shutdown() and then exits)
 void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
-  printf("[FATAL][%s] Caught segfault at address %p; shutting down daemon (traceback: %s)\n", date_str(now_str), si->si_addr, __func__);
+  printf("[FATAL][%s] Caught segfault at address %p; shutting down daemon "
+         "(traceback: %s)\n",
+         date_str(now_str), si->si_addr, __func__);
   system_shutdown(); // RUN
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
   exit(signal);
@@ -113,7 +115,7 @@ int get_image(const char *command) noexcept {
             date_str(now_str), __func__);
     status = 2;
   }
-  
+
   if (!status) {
     if (status = get_acquisition(&params, &fheaders, width, height, data);
         status != 0) {
@@ -229,7 +231,7 @@ int main() {
       fprintf(stderr, "[FATAL][%s] Failed to set target
   temperature...exiting\n", date_str()); return 10;
   }*/
-  
+
   try {
     ServerSocket server_sock(SOCKET_PORT);
 

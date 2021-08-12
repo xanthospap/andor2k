@@ -64,8 +64,7 @@ struct FitsHeaders {
 
   void clear() noexcept { mvec.clear(); }
 
-  int merge(const std::vector<FitsHeader> &hvec,
-            bool stop_if_error) noexcept;
+  int merge(const std::vector<FitsHeader> &hvec, bool stop_if_error) noexcept;
 
   int update(const FitsHeader &hdr) noexcept;
 

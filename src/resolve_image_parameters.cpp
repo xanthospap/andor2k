@@ -208,10 +208,10 @@ int resolve_image_parameters(const char *command,
                 date_str(buf), token, __func__);
         return 1;
       }
-  if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different! a if\n");
-    return 4;
-  }
+      if (params.read_out_mode_ != ReadOutMode::Image) {
+        printf("-----> WTF at end readoutmode is different! a if\n");
+        return 4;
+      }
 
       /* IMAGE FILENAME
        * --------------------------------------------------------*/
@@ -231,10 +231,10 @@ int resolve_image_parameters(const char *command,
       }
       std::memset(params.image_filename_, '\0', MAX_FITS_FILENAME_SIZE);
       std::strcpy(params.image_filename_, token);
-  if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different! a it\n");
-    return 4;
-  }
+      if (params.read_out_mode_ != ReadOutMode::Image) {
+        printf("-----> WTF at end readoutmode is different! a it\n");
+        return 4;
+      }
 
       /* IMAGE TYPE
        * --------------------------------------------------------*/
@@ -254,11 +254,11 @@ int resolve_image_parameters(const char *command,
       }
       std::memset(params.type_, '\0', MAX_IMAGE_TYPE_CHARS);
       std::strcpy(params.type_, token);
-      
-  if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different! a ot\n");
-    return 4;
-  }
+
+      if (params.read_out_mode_ != ReadOutMode::Image) {
+        printf("-----> WTF at end readoutmode is different! a ot\n");
+        return 4;
+      }
       /* OBJECT TYPE
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--object", 8)) {
@@ -277,12 +277,12 @@ int resolve_image_parameters(const char *command,
       }
       std::memset(params.object_name_, '\0', MAX_OBJECT_NAME_CHARS);
       std::strcpy(params.object_name_, token);
-  
-  if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different! a fn\n");
-    return 4;
-  }
-      
+
+      if (params.read_out_mode_ != ReadOutMode::Image) {
+        printf("-----> WTF at end readoutmode is different! a fn\n");
+        return 4;
+      }
+
       /* FILTER NAME
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--filter", 8)) {
@@ -302,10 +302,10 @@ int resolve_image_parameters(const char *command,
       std::memset(params.filter_name_, '\0', MAX_FILTER_NAME_CHARS);
       std::strcpy(params.filter_name_, token);
 
-  if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different! a e\n");
-    return 4;
-  }
+      if (params.read_out_mode_ != ReadOutMode::Image) {
+        printf("-----> WTF at end readoutmode is different! a e\n");
+        return 4;
+      }
       /* EXPOSURE
        * --------------------------------------------------------*/
     } else if (!std::strncmp(token, "--exposure", 10)) {
@@ -391,7 +391,7 @@ int resolve_image_parameters(const char *command,
   // TODO why the fuck do i need this here?
   std::memset(params.save_dir_, 0, 128);
   std::strcpy(params.save_dir_, "/home/andor2k/fits");
-  
+
   printf("-----> resolved image parameters ...\n");
   if (params.read_out_mode_ != ReadOutMode::Image) {
     printf("-----> WTF at end readoutmode is different!\n");
