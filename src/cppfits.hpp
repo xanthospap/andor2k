@@ -159,7 +159,7 @@ public:
     int hdr_errors = 0;
     int status;
     for (auto &hdr : headers.mvec) {
-      printf("[DEBUG] Applying header %s ...", hdr.key);
+      // printf("[DEBUG] Applying header %s ...", hdr.key);
       switch (hdr.type) {
       case FitsHeader::ValueType::tchar32:
         status = this->update_key(hdr.key, hdr.cval, hdr.comment);

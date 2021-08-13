@@ -3,6 +3,7 @@
 
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
+#include "cpp_socket.hpp"
 #include <cstdint>
 #include <limits>
 
@@ -11,6 +12,8 @@ constexpr int MAX_FITS_FILENAME_SIZE = 128;
 
 /// @brief Max chars for image type (aka flat, bias, etc)
 constexpr int MAX_IMAGE_TYPE_CHARS = 16;
+
+constexpr int MAX_SOCKET_BUFFER_SIZE = 1024;
 
 // @brief Max chars for any fits file (including path)
 constexpr int MAX_FITS_FILE_SIZE = 256;
@@ -151,7 +154,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                       at_32 *&img_mem) noexcept;
 
 int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
-                    int xnumpixels, int ynumpixels, at_32 *img_buffer) noexcept;
+                    int xnumpixels, int ynumpixels, at_32 *img_buffer, const andor2k::Socket& socket) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
 

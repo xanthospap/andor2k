@@ -21,7 +21,7 @@ using andor2k::Socket;
 char str_buffer_long[ARISTARCHOS_DECODE_BUFFER_SIZE];
 
 /// @brief
-char str_buffer_short[ARISTARCHOS_SOCKET_BUFFER_SIZE];
+char str_buffer_short[ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE];
 
 /// @brief for ceil_power2 we need the following to hold:
 static_assert(sizeof(unsigned int) == 4);
@@ -499,7 +499,7 @@ char *uncompress_bz2_string(char *source, char *dest,
 ///            we are only sending the request and then returning;
 /// @param[out] reply If we are expecting an answer from Aristarchos (aka
 ///             need_reply is TRUE), this buffer will hold the reply. It must be
-///             of size ARISTARCHOS_SOCKET_BUFFER_SIZE
+///             of size ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE
 /// @return Anything other than 0 denotes an error
 int send_aristarchos_request(int delay_sec, const char *request, int need_reply,
                              char *reply) noexcept {
@@ -524,10 +524,10 @@ int send_aristarchos_request(int delay_sec, const char *request, int need_reply,
 
     /* if we need to, get the reply */
     if (need_reply) {
-      std::memset(reply, '\0', ARISTARCHOS_SOCKET_BUFFER_SIZE);
+      std::memset(reply, '\0', ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE);
       /* need this delay for the telescope. Could probably be shorter */
       std::this_thread::sleep_for(std::chrono::seconds{delay_sec});
-      error = client_socket.recv(reply, ARISTARCHOS_SOCKET_BUFFER_SIZE);
+      error = client_socket.recv(reply, ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE);
       if (error < 0) {
         fprintf(stderr,
                 "[ERROR][%s] Failed receiving command from Aristarchos "

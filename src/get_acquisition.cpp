@@ -8,16 +8,18 @@
 #include <cstdio>
 #include <cstring>
 #include <thread>
+#include <cstdarg>
 
+using andor2k::Socket;
 using namespace std::chrono_literals;
 
 extern int sig_interrupt_set;
 extern int sig_abort_set;
 
 int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
-                    int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+                    int xpixels, int ypixels, at_32 *img_buffer, const Socket& socket) noexcept;
 int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
-                 int xpixels, int ypixels, at_32 *img_buffer) noexcept;
+                 int xpixels, int ypixels, at_32 *img_buffer, const Socket& socket) noexcept;
 int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
                      int xpixels, int ypixels, at_32 *img_buffer) noexcept;
 
@@ -33,6 +35,61 @@ int find_start_time_cor(const FitsHeaders *fheaders,
   correction_ns = 0;
   return 1;
 }
+
+int socket_sprintf(const Socket& socket, char *buffer, const char* fmt, ...) noexcept {
+  va_list va;
+  va_start(va, fmt);
+  std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
+  auto end = std::vsprintf(buffer, fmt, va);
+  va_end(va);
+  end = std::sprintf(buffer+end, ";time:");
+  date_str(buffer+end);
+  return socket.send(buffer);
+}
+
+int stop_reporting;
+class ThreadReporter {
+  public:
+    ThreadReporter(const Socket* s, long every, float exp_sec, int img_nr, int num_img) noexcept 
+      : every_ms(every), 
+        socket(s), 
+        image_nr(img_nr), 
+        num_images(num_img),
+        exposure_sec(exp_sec) 
+      {
+        clear_buf();
+        len_const_prt = std::sprintf(mbuf, "info:acquiring image ...;status:acquiring;image:%d/%d;time:", image_nr, num_images);
+        printf("---> Thread Construction; got %d/%d, writing: %s <---\n", img_nr, num_img, mbuf);
+      };
+    
+    void report() noexcept {
+      int it = 0;
+      while (!stop_reporting) {
+        date_str(mbuf+len_const_prt);
+        std::sprintf(mbuf+std::strlen(mbuf), ";progperc:%d", percent_done(it));
+        socket->send(mbuf);
+        printf("--> sending: [%s]; sleeping for %ld <--\n", mbuf, every_ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds(every_ms));
+        ++it;
+      }
+    }
+  private:
+    long every_ms;
+    const Socket* socket;
+    int image_nr, num_images;
+    char mbuf[MAX_SOCKET_BUFFER_SIZE];
+    int len_const_prt;
+    float exposure_sec;
+
+    void clear_buf() noexcept { std::memset(mbuf, 0, MAX_SOCKET_BUFFER_SIZE); }
+    int percent_done(int it) const noexcept {
+      double elapsed_sec = it * static_cast<double>(every_ms) / 1e3;
+      double done = elapsed_sec * 100e0 / exposure_sec;
+      return static_cast<int>(done);
+    }
+};
+
+auto report_lambda = [](ThreadReporter reporter) { reporter.report(); };
 
 /// @brief Setup and get an acquisition (single or multiple scans)
 /// The function will:
@@ -51,7 +108,7 @@ int find_start_time_cor(const FitsHeaders *fheaders,
 ///            memory alocated is width * height * sizeof(at_32)
 int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                     int xnumpixels, int ynumpixels,
-                    at_32 *img_buffer) noexcept {
+                    at_32 *img_buffer, const Socket& socket) noexcept {
 
   char buf[32] = {'\0'}; /* buffer for datetime string */
 #ifdef DEBUG
@@ -73,11 +130,11 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   switch (params->acquisition_mode_) {
   case AcquisitionMode::SingleScan:
     acq_status =
-        get_single_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
+        get_single_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer, socket);
     break;
   case AcquisitionMode::RunTillAbort:
     acq_status =
-        get_rta_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer);
+        get_rta_scan(params, fheaders, xnumpixels, ynumpixels, img_buffer, socket);
     break;
   case AcquisitionMode::KineticSeries:
     acq_status =
@@ -96,10 +153,6 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     fprintf(stderr, "[ERROR][%s] Failed acquiring image(s)! (traceback: %s)\n",
             date_str(buf), __func__);
   }
-
-  /* free allocated memory
-  delete[] img_buffer;
-  */
 
   return acq_status;
 }
@@ -235,38 +288,53 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
 int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
-                 int xpixels, int ypixels, at_32 *img_buffer) noexcept {
+                 int xpixels, int ypixels, at_32 *img_buffer, const Socket& socket) noexcept {
 
-  char buf[32] = {'\0'};                  /* buffer for datetime string */
-  char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
+  char buf[32] = {'\0'};                  // buffer for datetime string
+  char fits_filename[MAX_FITS_FILE_SIZE]; // FITS to save aqcuired data to
+  char sbuf[MAX_SOCKET_BUFFER_SIZE];
 
-  /* start acquisition(s) */
+  // start acquisition(s)
   printf("[DEBUG][%s] Starting (%d) image acquisitions ...\n", date_str(buf),
          params->num_images_);
   StartAcquisition();
 
   at_32 lAcquired = 0;
-  while (lAcquired < params->num_images_) { /* loop untill we have all images */
+  while (lAcquired < params->num_images_) { // loop untill we have all images
 
-    /* do we have a signal to quit ? */
+    // start reporting thread for this image
+    // ThreadReporter reporter(&socket, 500L, params->exposure_, lAcquired+1, params->num_images_);
+    int cur_image = lAcquired + 1;
+    std::thread rthread(report_lambda, ThreadReporter(&socket, 400L, params->exposure_, cur_image, params->num_images_));
+    printf("--> new thread created, %d/%d ... <---\n", cur_image, params->num_images_);
+
+    // do we have a signal to quit ?
     if (sig_abort_set || sig_interrupt_set) {
+      stop_reporting = true;
       return sig_abort_set ? ABORT_EXIT_STATUS : INTERRUPT_EXIT_STATUS;
     }
 
-    /* wait until acquisition finished */
+    // wait until acquisition finished
     if (WaitForAcquisition() != DRV_SUCCESS) {
       fprintf(stderr,
               "[ERROR][%s] Something happened while waiting for a new "
               "acquisition! Aborting (traceback: %s)\n",
               date_str(buf), __func__);
       AbortAcquisition();
+      stop_reporting = true;
+      rthread.join();
       return 10;
     }
 
-    /* total number of images acquired since the current acquisition started */
+    // acquisition finished; stop reporting via the thread
+    stop_reporting = true;
+    rthread.join();
+    printf("--> thread joined <---\n");
+
+    // total number of images acquired since the current acquisition started
     GetTotalNumberImagesAcquired(&lAcquired);
 
-    /* update the data array with the most recently acquired image */
+    // update the data array with the most recently acquired image
     if (unsigned int err = GetMostRecentImage(img_buffer, xpixels * ypixels);
         err != DRV_SUCCESS) {
       fprintf(stderr,
@@ -294,10 +362,11 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
         break;
       }
       AbortAcquisition();
+      socket_sprintf(socket, sbuf, "done;10;error:%u", err); 
       return 10;
     }
 
-    /* save to FITS format */
+    // save to FITS format
     if (get_next_fits_filename(params, fits_filename)) {
       fprintf(stderr,
               "[ERROR][%s] Failed getting FITS filename! No FITS image saved "
@@ -325,10 +394,12 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
               date_str(buf), __func__);
     }
     fits.close();
-  } /* colected/saved all exposures! */
+  } // colected/saved all exposures!
 
   printf("[DEBUG][%s] Finished acquiring/saving %d images for sequence\n",
          date_str(buf), (int)lAcquired);
+  socket_sprintf(socket, sbuf, "done;0;info:images acquired and saved %ld", lAcquired);
+  printf("--> sending [%s] <--\n", sbuf);
 
   AbortAcquisition();
   return 0;
@@ -345,10 +416,11 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
 int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
-                    int xpixels, int ypixels, at_32 *img_buffer) noexcept {
+                    int xpixels, int ypixels, at_32 *img_buffer, const Socket& socket) noexcept {
 
-  char buf[32] = {'\0'};                  /* buffer for datetime string */
-  char fits_filename[MAX_FITS_FILE_SIZE]; /* FITS to save aqcuired data to */
+  char buf[32] = {'\0'};                  // buffer for datetime string
+  char fits_filename[MAX_FITS_FILE_SIZE]; // FITS to save aqcuired data to
+  char sbuf[MAX_SOCKET_BUFFER_SIZE];
 
 #ifdef DEBUG
   printf("[DEBUG][%s] tracing image memory; function %s, address: %p, is NULL "
@@ -363,6 +435,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf), __func__);
     return 1;
   }
+
+  socket_sprintf(socket, sbuf, "status:starting acquisition;info:image %d/%d", 0, 1);
+  printf("---> sending via socket: %s <---\n", sbuf);
 
   // get start time correction in nanoseconds from headers (should have already
   // been computed)
@@ -396,7 +471,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
          date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
 #endif
 
-  /* get status and loop until acquisition finished */
+  // get status and loop until acquisition finished
   int status;
   GetStatus(&status);
 
@@ -433,7 +508,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   strfdt<DateTimeFormat::HMfS>(dtnow, tbuf);
   fheaders->update("DATE", tbuf, "UT time of exposure time");
 
-  /* check for errors */
+  // check for errors
   int retstat = 0;
   if (error != DRV_SUCCESS) {
     fprintf(stderr,
@@ -482,44 +557,30 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
               date_str(buf), __func__);
       retstat = 6;
     }
-    /* an error occured */
+    // an error occured
     AbortAcquisition();
-#ifdef USE_USHORT
-    delete[] uimg_buffer;
-#endif
     return retstat;
   }
 
-  /* formulate a valid FITS filename to save the data to */
+  // formulate a valid FITS filename to save the data to
   if (get_next_fits_filename(params, fits_filename)) {
     fprintf(stderr,
             "[ERROR][%s] Failed getting FITS filename! No FITS image saved "
             "(traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
-#ifdef USE_USHORT
-    delete[] uimg_buffer;
-#endif
     return 1;
   }
 
   printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...\n",
          date_str(buf), fits_filename);
 
-/* Create a FITS file and save the image at it */
-#ifdef USE_USHORT
-  FitsImage<uint16_t> fits(fits_filename, xpixels, ypixels);
-  if (fits.write<at_u16>(uimg_buffer)) {
-#else
+  // Create a FITS file and save the image at it
   FitsImage<int32_t> fits(fits_filename, xpixels, ypixels);
   if (fits.write<at_32>(img_buffer)) {
-#endif
     fprintf(stderr,
             "[ERROR][%s] Failed writting data to FITS file (traceback: %s)!\n",
             date_str(buf), __func__);
-#ifdef USE_USHORT
-    delete[] uimg_buffer;
-#endif
     return 15;
   } else {
     printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
@@ -532,10 +593,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf), __func__);
   }
   fits.close();
+  
+  socket_sprintf(socket, sbuf, "status:image saving done;info:image %d/%d", 0, 1);
+  printf("---> sending via socket: %s <---\n", sbuf);
 
-#ifdef USE_USHORT
-  delete[] uimg_buffer;
-#endif
-  /* all done */
   return 0;
 }

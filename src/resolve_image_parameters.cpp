@@ -54,8 +54,8 @@ int resolve_image_parameters(const char *command,
   char buf[32];
 
   /* copy the input string so that we can tokenize it */
-  char string[SOCKET_BUFFER_SIZE];
-  std::memcpy(string, command, sizeof(char) * SOCKET_BUFFER_SIZE);
+  char string[MAX_SOCKET_BUFFER_SIZE];
+  std::memcpy(string, command, sizeof(char) * MAX_SOCKET_BUFFER_SIZE);
 
   char *token = std::strtok(string, " "); /* this is the command (aka image) */
   token = std::strtok(nullptr, " ");

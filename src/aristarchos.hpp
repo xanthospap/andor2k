@@ -11,7 +11,7 @@ constexpr char ARISTARCHOS_IP[] = "195.251.202.253";
 constexpr int ARISTARCHOS_PORT = 50001;
 
 /// @brief Buffer size for communication with Aristarchos
-constexpr int ARISTARCHOS_SOCKET_BUFFER_SIZE = 1024;
+constexpr int ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE = 1024;
 
 /// @brief Buffer size used for decoding (bzip2 && base64) of 1Mb
 /// @todo is this too large?

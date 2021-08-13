@@ -32,7 +32,7 @@ constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
-char buffer[SOCKET_BUFFER_SIZE];
+char buffer[MAX_SOCKET_BUFFER_SIZE];
 
 // ANDOR2K parameters controlling usage
 AndorParameters params;
@@ -88,7 +88,7 @@ int set_temperature(const char *command) noexcept {
   return cool_to_temperature(target_temp);
 }
 
-int get_image(const char *command) noexcept {
+int get_image(const char *command, const Socket &socket) noexcept {
 
   /* first try to resolve the image parameters of the command */
   if (resolve_image_parameters(command, params)) {
@@ -117,7 +117,7 @@ int get_image(const char *command) noexcept {
   }
 
   if (!status) {
-    if (status = get_acquisition(&params, &fheaders, width, height, data);
+    if (status = get_acquisition(&params, &fheaders, width, height, data, socket);
         status != 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed to get/save image(s); aborting request now "
@@ -132,7 +132,7 @@ int get_image(const char *command) noexcept {
   return status;
 }
 
-int resolve_command(const char *command) noexcept {
+int resolve_command(const char *command, const Socket& socket) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
     return set_temperature(command);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
@@ -140,7 +140,11 @@ int resolve_command(const char *command) noexcept {
   } else if (!(std::strncmp(command, "status", 6))) {
     return print_status();
   } else if (!(std::strncmp(command, "image", 5))) {
-    return get_image(command);
+    int error = get_image(command, socket);
+    std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
+    sprintf(buffer, "done;%d", error);
+    socket.send(buffer);
+    return error;
   } else {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve command: \"%s\"; doing nothing!\n",
@@ -153,11 +157,11 @@ void chat(const Socket &socket) {
   for (;;) {
 
     /* read message from client into buffer */
-    std::memset(buffer, '\0', sizeof(buffer));
+    std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
     socket.recv(buffer, 1024);
 
     /* perform the operation requested by clinet */
-    int answr = resolve_command(buffer);
+    int answr = resolve_command(buffer, socket);
     if (answr == -100) {
       printf(
           "[DEBUG][%s] Received shutdown command; initializing exit sequence\n",
@@ -165,14 +169,14 @@ void chat(const Socket &socket) {
       break;
     }
 
-    // get message for client
+    /* get message for client
     buffer[0] = '0';
     buffer[1] = '\0';
     if (answr)
       buffer[0] = '1';
 
     // send message to client
-    socket.send(buffer);
+    socket.send(buffer);*/
   }
 
   return;
