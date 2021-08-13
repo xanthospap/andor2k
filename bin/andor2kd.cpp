@@ -88,9 +88,9 @@ int set_temperature(const char *command) noexcept {
   return cool_to_temperature(target_temp);
 }
 
-int get_image(const char *command) noexcept {
+int get_image(const char *command, const Socket& socket) noexcept {
 
-  /* first try to resolve the image parameters of the command */
+  // first try to resolve the image parameters of the command
   if (resolve_image_parameters(command, params)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve image parameters; aborting request! "
@@ -99,13 +99,12 @@ int get_image(const char *command) noexcept {
     return 1;
   }
 
-  /* setup the acquisition process for the image(s); also prepare FITS headers
-   * for later use in the file(s) to be saved
-   */
+  // setup the acquisition process for the image(s); also prepare FITS headers
+  // for later use in the file(s) to be saved
   int width, height;
   float vsspeed, hsspeed;
   FitsHeaders fheaders;
-  at_32 *data = nullptr; /* remember to free this */
+  at_32 *data = nullptr; // remember to free this
   int status = 0;
   if (setup_acquisition(&params, &fheaders, width, height, vsspeed, hsspeed,
                         data)) {
@@ -117,7 +116,7 @@ int get_image(const char *command) noexcept {
   }
 
   if (!status) {
-    if (status = get_acquisition(&params, &fheaders, width, height, data);
+    if (status = get_acquisition(&params, &fheaders, width, height, data, socket);
         status != 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed to get/save image(s); aborting request now "
@@ -127,12 +126,12 @@ int get_image(const char *command) noexcept {
     }
   }
 
-  /* free memory and return */
+  // free memory and return
   delete[] data;
   return status;
 }
 
-int resolve_command(const char *command) noexcept {
+int resolve_command(const char *command, const Socket& socket) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
     return set_temperature(command);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
@@ -140,7 +139,7 @@ int resolve_command(const char *command) noexcept {
   } else if (!(std::strncmp(command, "status", 6))) {
     return print_status();
   } else if (!(std::strncmp(command, "image", 5))) {
-    return get_image(command);
+    return get_image(command, socket);
   } else {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve command: \"%s\"; doing nothing!\n",
@@ -152,12 +151,12 @@ int resolve_command(const char *command) noexcept {
 void chat(const Socket &socket) {
   for (;;) {
 
-    /* read message from client into buffer */
+    // read message from client into buffer
     std::memset(buffer, '\0', sizeof(buffer));
-    socket.recv(buffer, 1024);
+    socket.recv(buffer, MAX_SOCKET_BUFFER_SIZE);
 
-    /* perform the operation requested by clinet */
-    int answr = resolve_command(buffer);
+    // perform the operation requested by clinet
+    int answr = resolve_command(buffer, socket);
     if (answr == -100) {
       printf(
           "[DEBUG][%s] Received shutdown command; initializing exit sequence\n",
@@ -240,7 +239,7 @@ int main() {
     printf("[DEBUG][%s] Service is up and running ... waiting for input\n",
            date_str(now_str));
 
-    /* creating hearing child socket */
+    // creating hearing child socket
     Socket child_socket = server_sock.accept(sock_status);
     if (sock_status < 0) {
       fprintf(stderr, "[FATAL][%s] Failed to create child socket ... exiting\n",
@@ -249,7 +248,7 @@ int main() {
     }
     printf("[DEBUG][%s] Waiting for instructions ...\n", date_str(now_str));
 
-    /* communicate with client */
+    // communicate with client
     chat(child_socket);
 
   } catch (std::exception &e) {
@@ -257,7 +256,7 @@ int main() {
     fprintf(stderr, "[FATAL][%s] ... exiting\n", date_str(now_str));
   }
 
-  /* shutdown system */
+  // shutdown system
   system_shutdown();
 
   return 0;

@@ -15,6 +15,7 @@ MCXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-march=native \
+        -DCPPSTD_THREAD \
 	-DDEBUG
 
 dandor2kd_SOURCES = andor2kd.cpp

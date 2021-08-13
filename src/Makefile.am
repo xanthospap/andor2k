@@ -23,6 +23,7 @@ libhelmosandor2k_la_CXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-march=native \
+        -DCPPSTD_THREAD \
 	-DDEBUG
 
 MCXXFLAGS = \
@@ -38,6 +39,7 @@ MCXXFLAGS = \
 	-Winline \
 	-Wdisabled-optimization \
 	-march=native \
+        -DCPPSTD_THREAD \
 	-DDEBUG
 
 ##
