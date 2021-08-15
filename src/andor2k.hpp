@@ -90,7 +90,7 @@ struct AndorParameters {
       image_vend_{MAX_PIXELS_IN_DIM};
 
   /* options for acquisition mode */
-  AcquisitionMode acquisition_mode_{AcquisitionMode::SingleScan};
+  AcquisitionMode acquisition_mode_{AcquisitionMode::RunTillAbort};
   int num_accumulations_{1}; // relevant for Accumulate and KineticSeries
   float accumulation_cycle_time_{
       0.2}; // relevant for Accumulate and KineticSeries; units is seconds
