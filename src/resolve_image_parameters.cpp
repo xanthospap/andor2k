@@ -40,27 +40,26 @@
 int resolve_image_parameters(const char *command,
                              AndorParameters &params) noexcept {
 
-  /* first string should be "image" */
+  // first string should be "image"
   if (std::strncmp(command, "image", 5))
     return 1;
 
-  printf("-----> resolving image parameters ...\n");
   if (params.read_out_mode_ != ReadOutMode::Image) {
     printf("-----> WTF at start readoutmode is different!\n");
     return 4;
   }
 
-  /* datetime string buffer */
+  // datetime string buffer
   char buf[32];
 
-  /* copy the input string so that we can tokenize it */
+  // copy the input string so that we can tokenize it
   char string[MAX_SOCKET_BUFFER_SIZE];
   std::memcpy(string, command, sizeof(char) * MAX_SOCKET_BUFFER_SIZE);
 
-  char *token = std::strtok(string, " "); /* this is the command (aka image) */
+  char *token = std::strtok(string, " "); // this is the command (aka image)
   token = std::strtok(nullptr, " ");
   char *end;
-  /* split remaining substring to tokens and process one at a time */
+  // split remaining substring to tokens and process one at a time
   while (token) {
 
     /* NUM IMAGES
@@ -81,12 +80,7 @@ int resolve_image_parameters(const char *command,
                 date_str(buf), token, __func__);
         return 1;
       }
-      if (params.num_images_ > 1) {
-        params.acquisition_mode_ = AcquisitionMode::RunTillAbort;
-        // params.acquisition_mode_ = AcquisitionMode::KineticSeries;
-        printf("[DEBUG][%s] Setting Acquisition Mode to %1d\n", date_str(buf),
-               AcquisitionMode2int(params.acquisition_mode_));
-      } else if (params.num_images_ == 1) {
+      if (params.num_images_ == 1) {
         params.acquisition_mode_ = AcquisitionMode::SingleScan;
       }
 
@@ -352,10 +346,10 @@ int resolve_image_parameters(const char *command,
               date_str(buf), token, __func__);
     }
 
-    token = std::strtok(nullptr, " "); /* resolve next token (if any) */
+    token = std::strtok(nullptr, " "); // resolve next token (if any)
   }
 
-  /* some final testing */
+  // some final testing
   int status = 0;
   if (!params.image_vbin_ || !params.image_hbin_) {
     fprintf(stderr,

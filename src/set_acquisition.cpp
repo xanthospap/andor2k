@@ -45,9 +45,9 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                       int &width, int &height, float &vsspeed, float &hsspeed,
                       at_32 *&img_mem) noexcept {
 
-  char buf[32] = {'\0'}; /* buffer for datetime string */
+  char buf[32] = {'\0'}; // buffer for datetime string
 
-  /* check and set read-out mode */
+  // check and set read-out mode
   if (params->read_out_mode_ != ReadOutMode::Image) {
     fprintf(stderr,
             "[ERROR][%s] Can only acquire images in Image ReadOut Mode! "
@@ -61,7 +61,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 10;
   }
 
-  /* set acquisition mode (this will also set the exposure time) */
+  // set acquisition mode (this will also set the exposure time)
   if (setup_acquisition_mode(params)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to set acquisition mode! (traceback: %s)\n",
@@ -69,8 +69,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 10;
   }
 
-  /* set vertical and horizontal shift speeds */
-  // float vspeed, hspeed;
+  // set vertical and horizontal shift speeds
   if (set_fastest_recomended_vh_speeds(vsspeed, hsspeed)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to set shift speed(s)! (traceback: %s)\n",
@@ -78,7 +77,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 10;
   }
 
-  /* initialize shutter */
+  // initialize shutter
   unsigned int error =
       SetShutter(1, ShutterMode2int(params->shutter_mode_),
                  params->shutter_closing_time_, params->shutter_opening_time_);
@@ -89,7 +88,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 10;
   }
 
-  /* get detector pixels */
+  // get detector pixels
   int xpixels, ypixels;
   if (GetDetector(&xpixels, &ypixels) != DRV_SUCCESS) {
     fprintf(stderr,
@@ -105,7 +104,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 1;
   }
 
-  /* compute actual number of pixels (width and height) for the exposure(s) */
+  // compute actual number of pixels (width and height) for the exposure(s)
   int xnumpixels = params->image_hend_ - params->image_hstart_ + 1;
   int ynumpixels = params->image_vend_ - params->image_vstart_ + 1;
   xnumpixels /= params->image_hbin_;
@@ -123,7 +122,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
 
-  /* try to get/decode Aristarchos headers if requested */
+  // try to get/decode Aristarchos headers if requested
   if (params->ar_hdr_tries_ > 0) {
     std::vector<FitsHeader> ar_headers;
     ar_headers.reserve(50);
@@ -143,7 +142,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     }
   }
 
-  /* add a few things to the headers */
+  // add a few things to the headers
   float actual_exposure, actual_accumulate, actual_kinetic;
   if (GetAcquisitionTimings(&actual_exposure, &actual_accumulate,
                             &actual_kinetic) != DRV_SUCCESS) {
@@ -240,6 +239,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for TIMECORR\n",
             date_str(buf));
+  
   // get the camera's temperature for reporting in header
   float tempf;
   if (GetTemperatureF(&tempf) != DRV_TEMP_STABILIZED) {
@@ -265,7 +265,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     // return 3;
   }
 
-  /* allocate memory to (temporarily) hold the image data */
+  // allocate memory to (temporarily) hold the image data
   long image_pixels = xnumpixels * ynumpixels;
   img_mem = nullptr;
   img_mem = new at_32[image_pixels];

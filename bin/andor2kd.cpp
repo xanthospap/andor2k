@@ -34,9 +34,6 @@ char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char buffer[MAX_SOCKET_BUFFER_SIZE];
 
-// ANDOR2K parameters controlling usage
-AndorParameters params;
-
 /// @brief Signal handler to kill daemon (calls shutdown() and then exits)
 void kill_daemon(int signal) noexcept {
   printf(
@@ -88,9 +85,9 @@ int set_temperature(const char *command) noexcept {
   return cool_to_temperature(target_temp);
 }
 
-int get_image(const char *command, const Socket &socket) noexcept {
+int get_image(const char *command, const Socket &socket, AndorParameters &params) noexcept {
 
-  /* first try to resolve the image parameters of the command */
+  // first try to resolve the image parameters of the command
   if (resolve_image_parameters(command, params)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve image parameters; aborting request! "
@@ -99,13 +96,12 @@ int get_image(const char *command, const Socket &socket) noexcept {
     return 1;
   }
 
-  /* setup the acquisition process for the image(s); also prepare FITS headers
-   * for later use in the file(s) to be saved
-   */
+  // setup the acquisition process for the image(s); also prepare FITS headers
+  // for later use in the file(s) to be saved
   int width, height;
   float vsspeed, hsspeed;
   FitsHeaders fheaders;
-  at_32 *data = nullptr; /* remember to free this */
+  at_32 *data = nullptr; // remember to free this
   int status = 0;
   if (setup_acquisition(&params, &fheaders, width, height, vsspeed, hsspeed,
                         data)) {
@@ -127,24 +123,64 @@ int get_image(const char *command, const Socket &socket) noexcept {
     }
   }
 
-  /* free memory and return */
+  // free memory and return
   delete[] data;
   return status;
 }
 
-int resolve_command(const char *command, const Socket& socket) noexcept {
+int set_param_value(const char *command, AndorParameters& params) noexcept {
+  if (std::strncmp(command, "setparam", 8))
+    return 1;
+  
+  // copy the input string so that we can tokenize it
+  char string[MAX_SOCKET_BUFFER_SIZE];
+  std::memcpy(string, command, MAX_SOCKET_BUFFER_SIZE);
+  
+  int ival;
+  float fval;
+    
+  char *token = std::strtok(string, " "); // this is the command (aka setparam)
+  token = std::strtok(nullptr, " ");
+  char *start, *end;
+  // split remaining substring to tokens and process one at a time
+  while (token) {
+    
+    if (!std::strncmp(token, "acqmode=", 8)) {
+      ival = std::strtol(token+8, &end, 10);
+      if (end == token) {
+        return 10;
+      }
+      params.acquisition_mode_ = static_cast<AcquisitionMode>(ival);
+      printf("[DEBUG][%s] Changing Acquisition Mode to : %d!\n", date_str(now_str), ival);
+
+    } else if (!std::strncmp(token, "kineticcycletime=", 17)) {
+      fval = std::strtod(token+17, &end);
+      if (end == token) {
+        return 10;
+      }
+      params.kinetics_cycle_time_ = fval;
+      printf("[DEBUG][%s] Changing Kinetic Cycle Time to : %.3fsec!\n", date_str(now_str), fval);
+    } else {
+      fprintf(stderr, "[WRNNG][%s] Skipping token in paramter set command: [%s]\n", date_str(now_str), token);
+    }
+    
+    token = std::strtok(nullptr, " "); // resolve next token (if any)
+  }
+
+  return 0;
+}
+
+int resolve_command(const char *command, const Socket& socket, AndorParameters    &params) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
     return set_temperature(command);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
     return -100;
   } else if (!(std::strncmp(command, "status", 6))) {
     return print_status();
+  } else if (!(std::strncmp(command, "setparam", 8))) {
+    return set_param_value(command, params);
   } else if (!(std::strncmp(command, "image", 5))) {
-    int error = get_image(command, socket);
-    std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
-    sprintf(buffer, "done;%d", error);
-    socket.send(buffer);
-    return error;
+    return get_image(command, socket, params);
   } else {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve command: \"%s\"; doing nothing!\n",
@@ -153,7 +189,7 @@ int resolve_command(const char *command, const Socket& socket) noexcept {
   }
 }
 
-void chat(const Socket &socket) {
+void chat(const Socket &socket, AndorParameters &params) {
   for (;;) {
 
     /* read message from client into buffer */
@@ -161,7 +197,7 @@ void chat(const Socket &socket) {
     socket.recv(buffer, 1024);
 
     /* perform the operation requested by clinet */
-    int answr = resolve_command(buffer, socket);
+    int answr = resolve_command(buffer, socket, params);
     if (answr == -100) {
       printf(
           "[DEBUG][%s] Received shutdown command; initializing exit sequence\n",
@@ -198,6 +234,9 @@ int main() {
   signal(SIGINT, kill_daemon);
   signal(SIGQUIT, kill_daemon);
   signal(SIGTERM, kill_daemon);
+
+  // ANDOR2K parameters controlling usage
+  AndorParameters params;
 
   // initialize AndorParameters
   params.set_defaults();
@@ -254,7 +293,7 @@ int main() {
     printf("[DEBUG][%s] Waiting for instructions ...\n", date_str(now_str));
 
     /* communicate with client */
-    chat(child_socket);
+    chat(child_socket, params);
 
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR][%s] Failed creating deamon\n", date_str(now_str));

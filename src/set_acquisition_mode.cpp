@@ -79,6 +79,7 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
   case AcquisitionMode::KineticSeries:
     status = SetAcquisitionMode(imode);
     if (status == DRV_SUCCESS) {
+      printf("--> Note AcquisitionMode set to  KineticSeries <--\n");
       /* set the exposure time */
       if (status = SetExposureTime(params->exposure_); status == DRV_SUCCESS) {
         /* set the number of scans accumulated in memory */
@@ -107,6 +108,7 @@ int setup_acquisition_mode(const AndorParameters *params) noexcept {
   case AcquisitionMode::RunTillAbort:
     status = SetAcquisitionMode(imode);
     if (status == DRV_SUCCESS) {
+      printf("--> Note AcquisitionMode set to RunTillAbort <--\n");
       /* set the exposure time */
       if (status = SetExposureTime(params->exposure_); status == DRV_SUCCESS) {
         /* set the kinetic cycle time to the nearest valid value not less than
