@@ -278,7 +278,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   }
   printf("[DEBUG][%s] Allocated memory for image; size is %d*%d=%ld (adress: "
          "%p)\n",
-         date_str(buf), xnumpixels, ynumpixels, image_pixels, (void *)&img_mem);
+         date_str(buf), xnumpixels, ynumpixels, image_pixels, (void *)img_mem);
 
   /* gcc wants smthng to be done with img_mem else it complains about an
    * unused variable; do something!

@@ -82,6 +82,8 @@ int resolve_image_parameters(const char *command,
       }
       if (params.num_images_ == 1) {
         params.acquisition_mode_ = AcquisitionMode::SingleScan;
+      } else if (params.num_images_ > 1 && params.acquisition_mode_ == AcquisitionMode::SingleScan) {
+        params.acquisition_mode_ = AcquisitionMode::RunTillAbort;
       }
 
       /* BINNING OPTIONS
@@ -382,13 +384,12 @@ int resolve_image_parameters(const char *command,
     status = 2;
   }
 
-  // TODO why the fuck do i need this here?
+  // TODO why the fuck do i need this here? i actually think i don't, its fixed
   std::memset(params.save_dir_, 0, 128);
   std::strcpy(params.save_dir_, "/home/andor2k/fits");
 
-  printf("-----> resolved image parameters ...\n");
   if (params.read_out_mode_ != ReadOutMode::Image) {
-    printf("-----> WTF at end readoutmode is different!\n");
+    fprintf(stderr, "[ERROR][%s] ReadOutMode can only be \'Image\', for some reason it is not! (traceback: %s)\n", date_str(buf), __func__);
     return 4;
   }
 

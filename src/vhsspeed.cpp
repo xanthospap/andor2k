@@ -20,7 +20,7 @@
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept {
   char buf[32];
 
-  /* set vertical shift speed to fastest recommended */
+  // set vertical shift speed to fastest recommended
   int index;
   unsigned int error = GetFastestRecommendedVSSpeed(&index, &vspeed);
   if (error != DRV_SUCCESS) {
@@ -43,13 +43,13 @@ int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept {
            date_str(buf), vspeed);
   }
 
-  /* get horizontal speed shifts */
+  // get horizontal speed shifts
   int num_hspeeds;
   error = GetNumberHSSpeeds(0, 0, &num_hspeeds);
-  /* note that the shift speeds are always returned fastest first */
+  // note that the shift speeds are always returned fastest first
   if (error == DRV_SUCCESS) {
-    GetHSSpeed(0, 0, 0, &hspeed); /* get first speed, aka the fastest */
-    error = SetHSSpeed(0, 0);     /* set the first speed, aka the fastest */
+    GetHSSpeed(0, 0, 0, &hspeed); // get first speed, aka the fastest
+    error = SetHSSpeed(0, 0);     // set the first speed, aka the fastest
   }
   if (error == DRV_SUCCESS) {
     printf("[DEBUG][%s] Set Horizontal Shift Speed to fastest, that is %8.2ff "

@@ -125,6 +125,10 @@ int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
 
   char buf[32] = {'\0'}; // buffer for datetime string
   
+  #ifdef DEBUG
+  printf("[DEBUG][%s] get_acquisition called, with dimensions %dx%d, to be stored at %p (traceback: %s)\n", date_str(buf), xnumpixels, ynumpixels, (void*)img_buffer, __func__);
+  #endif
+  
   // depending on acquisition mode, acquire the exposure(s)
   int acq_status = 0;
   switch (params->acquisition_mode_) {
@@ -469,7 +473,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   char sbuf[MAX_SOCKET_BUFFER_SIZE];
 
   socket_sprintf(socket, sbuf, "status:starting acquisition;info:image %d/%d", 1, 1);
-  printf("---> sending via socket: %s <---\n", sbuf);
+  // printf("---> sending via socket: %s <---\n", sbuf);
 
   // get start time correction in nanoseconds from headers (should have already
   // been computed)
@@ -483,7 +487,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   }
 
   // start acquisition and get date
-  printf("[DEBUG][%s] Starting image acquisition ...\n", date_str(buf));
+  printf("[DEBUG][%s] Starting image acquisition ... with dimensions: %dx%d stored at %p\n", date_str(buf), xpixels, ypixels, (void*)img_buffer);
 
 #ifdef DEBUG
   auto at_start = std::chrono::high_resolution_clock::now();
@@ -522,6 +526,10 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
       date_str(buf));
   unsigned int error = GetAcquiredData16(uimg_buffer, xpixels * ypixels);
 #else
+  if (!img_buffer) {
+    fprintf(stderr, "[ERROR][%s] WTF?? Passed in an empty pointer to store image to! (traceback: %s)", date_str(buf), __func__);
+    return 404;
+  }
   unsigned int error = GetAcquiredData(img_buffer, xpixels * ypixels);
 #endif
 
