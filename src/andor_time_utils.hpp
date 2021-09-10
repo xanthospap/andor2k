@@ -32,7 +32,7 @@ char *strfdt(const std_time_point &t, char *buf) noexcept {
 
 template <>
 inline char *strfdt<DateTimeFormat::YMD>(const std_time_point &t,
-                                          char *buf) noexcept {
+                                         char *buf) noexcept {
   long fsec;
   auto tm = strfdt_work(t, fsec);
   if (std::strftime(buf, 64, "%F", &tm) > 0) {
@@ -43,7 +43,7 @@ inline char *strfdt<DateTimeFormat::YMD>(const std_time_point &t,
 
 template <>
 inline char *strfdt<DateTimeFormat::YMDHMS>(const std_time_point &t,
-                                             char *buf) noexcept {
+                                            char *buf) noexcept {
   long fsec;
   auto tm = strfdt_work(t, fsec);
   if (std::strftime(buf, 64, "%FT%T", &tm) > 0) {
@@ -54,7 +54,7 @@ inline char *strfdt<DateTimeFormat::YMDHMS>(const std_time_point &t,
 
 template <>
 inline char *strfdt<DateTimeFormat::YMDHMfS>(const std_time_point &t,
-                                              char *buf) noexcept {
+                                             char *buf) noexcept {
   long fsec;
   auto tm = strfdt_work(t, fsec);
   if (int btw = std::strftime(buf, 64, "%FT%T.", &tm); btw > 0) {
@@ -66,7 +66,7 @@ inline char *strfdt<DateTimeFormat::YMDHMfS>(const std_time_point &t,
 
 template <>
 inline char *strfdt<DateTimeFormat::HMfS>(const std_time_point &t,
-                                           char *buf) noexcept {
+                                          char *buf) noexcept {
   long fsec;
   auto tm = strfdt_work(t, fsec);
   if (int btw = std::strftime(buf, 64, "%T.", &tm); btw > 0) {
@@ -78,7 +78,7 @@ inline char *strfdt<DateTimeFormat::HMfS>(const std_time_point &t,
 
 template <>
 inline char *strfdt<DateTimeFormat::HMS>(const std_time_point &t,
-                                          char *buf) noexcept {
+                                         char *buf) noexcept {
   long fsec;
   auto tm = strfdt_work(t, fsec);
   if (std::strftime(buf, 64, "%T.", &tm) > 0) {

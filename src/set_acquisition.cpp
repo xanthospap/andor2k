@@ -239,7 +239,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for TIMECORR\n",
             date_str(buf));
-  
+
   // get the camera's temperature for reporting in header
   float tempf;
   if (GetTemperatureF(&tempf) != DRV_TEMP_STABILIZED) {

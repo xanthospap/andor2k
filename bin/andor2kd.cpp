@@ -26,6 +26,7 @@ constexpr int ANDOR_MAX_TEMP = 10;
 // Global constants for abort/interrupt
 extern int sig_abort_set;
 extern int sig_interrupt_set;
+extern int abort_exposure_set;
 
 // buffers and constants for socket communication
 constexpr int SOCKET_PORT = 8080;
@@ -85,7 +86,8 @@ int set_temperature(const char *command) noexcept {
   return cool_to_temperature(target_temp);
 }
 
-int get_image(const char *command, const Socket &socket, AndorParameters &params) noexcept {
+int get_image(const char *command, const Socket &socket,
+              AndorParameters &params) noexcept {
 
   // first try to resolve the image parameters of the command
   if (resolve_image_parameters(command, params)) {
@@ -113,7 +115,8 @@ int get_image(const char *command, const Socket &socket, AndorParameters &params
   }
 
   if (!status) {
-    if (status = get_acquisition(&params, &fheaders, width, height, data, socket);
+    if (status =
+            get_acquisition(&params, &fheaders, width, height, data, socket);
         status != 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed to get/save image(s); aborting request now "
@@ -128,49 +131,54 @@ int get_image(const char *command, const Socket &socket, AndorParameters &params
   return status;
 }
 
-int set_param_value(const char *command, AndorParameters& params) noexcept {
+int set_param_value(const char *command, AndorParameters &params) noexcept {
   if (std::strncmp(command, "setparam", 8))
     return 1;
-  
+
   // copy the input string so that we can tokenize it
   char string[MAX_SOCKET_BUFFER_SIZE];
   std::memcpy(string, command, MAX_SOCKET_BUFFER_SIZE);
-  
+
   int ival;
   float fval;
-    
+
   char *token = std::strtok(string, " "); // this is the command (aka setparam)
   token = std::strtok(nullptr, " ");
   char *start, *end;
   // split remaining substring to tokens and process one at a time
   while (token) {
-    
+
     if (!std::strncmp(token, "acqmode=", 8)) {
-      ival = std::strtol(token+8, &end, 10);
+      ival = std::strtol(token + 8, &end, 10);
       if (end == token) {
         return 10;
       }
       params.acquisition_mode_ = static_cast<AcquisitionMode>(ival);
-      printf("[DEBUG][%s] Changing Acquisition Mode to : %d!\n", date_str(now_str), ival);
+      printf("[DEBUG][%s] Changing Acquisition Mode to : %d!\n",
+             date_str(now_str), ival);
 
     } else if (!std::strncmp(token, "kineticcycletime=", 17)) {
-      fval = std::strtod(token+17, &end);
+      fval = std::strtod(token + 17, &end);
       if (end == token) {
         return 10;
       }
       params.kinetics_cycle_time_ = fval;
-      printf("[DEBUG][%s] Changing Kinetic Cycle Time to : %.3fsec!\n", date_str(now_str), fval);
+      printf("[DEBUG][%s] Changing Kinetic Cycle Time to : %.3fsec!\n",
+             date_str(now_str), fval);
     } else {
-      fprintf(stderr, "[WRNNG][%s] Skipping token in paramter set command: [%s]\n", date_str(now_str), token);
+      fprintf(stderr,
+              "[WRNNG][%s] Skipping token in paramter set command: [%s]\n",
+              date_str(now_str), token);
     }
-    
+
     token = std::strtok(nullptr, " "); // resolve next token (if any)
   }
 
   return 0;
 }
 
-int resolve_command(const char *command, const Socket& socket, AndorParameters    &params) noexcept {
+int resolve_command(const char *command, const Socket &socket,
+                    AndorParameters &params) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
     return set_temperature(command);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
@@ -181,6 +189,9 @@ int resolve_command(const char *command, const Socket& socket, AndorParameters  
     return set_param_value(command, params);
   } else if (!(std::strncmp(command, "image", 5))) {
     return get_image(command, socket, params);
+  } else if (!(std::strncmp(command, "abort", 5))) {
+    abort_exposure_set = true;
+    return 0;
   } else {
     fprintf(stderr,
             "[ERROR][%s] Failed to resolve command: \"%s\"; doing nothing!\n",

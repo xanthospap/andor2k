@@ -2,8 +2,8 @@
 #define __HELMOS_ANDOR2K_HPP__
 
 #include "atmcdLXd.h"
-#include "fits_header.hpp"
 #include "cpp_socket.hpp"
+#include "fits_header.hpp"
 #include <cstdint>
 #include <limits>
 
@@ -154,11 +154,14 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                       at_32 *&img_mem) noexcept;
 
 int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
-                    int xnumpixels, int ynumpixels, at_32 *img_buffer, const andor2k::Socket& socket) noexcept;
+                    int xnumpixels, int ynumpixels, at_32 *img_buffer,
+                    const andor2k::Socket &socket) noexcept;
 
 int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
 
-int coarse_exposure_time(const AndorParameters* params, long &millisec_per_image, long &total_millisec) noexcept;
+int coarse_exposure_time(const AndorParameters *params,
+                         long &millisec_per_image,
+                         long &total_millisec) noexcept;
 
 char *get_status_string(char *buf) noexcept;
 char *get_start_acquisition_status_string(unsigned int error,

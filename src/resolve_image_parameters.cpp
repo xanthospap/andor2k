@@ -82,7 +82,8 @@ int resolve_image_parameters(const char *command,
       }
       if (params.num_images_ == 1) {
         params.acquisition_mode_ = AcquisitionMode::SingleScan;
-      } else if (params.num_images_ > 1 && params.acquisition_mode_ == AcquisitionMode::SingleScan) {
+      } else if (params.num_images_ > 1 &&
+                 params.acquisition_mode_ == AcquisitionMode::SingleScan) {
         params.acquisition_mode_ = AcquisitionMode::RunTillAbort;
       }
 
@@ -389,7 +390,10 @@ int resolve_image_parameters(const char *command,
   std::strcpy(params.save_dir_, "/home/andor2k/fits");
 
   if (params.read_out_mode_ != ReadOutMode::Image) {
-    fprintf(stderr, "[ERROR][%s] ReadOutMode can only be \'Image\', for some reason it is not! (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] ReadOutMode can only be \'Image\', for some reason it "
+            "is not! (traceback: %s)\n",
+            date_str(buf), __func__);
     return 4;
   }
 

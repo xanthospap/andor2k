@@ -3,6 +3,9 @@
 
 int sig_abort_set = 0;
 int sig_interrupt_set = 0;
+int abort_exposure_set = 0;
+int stop_reporting_thread = 0;
+int acquisition_thread_finished = 0;
 
 void AndorParameters::set_defaults() noexcept {
   camera_num_ = 0;
