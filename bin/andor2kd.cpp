@@ -215,15 +215,6 @@ void chat(const Socket &socket, AndorParameters &params) {
           date_str(now_str));
       break;
     }
-
-    /* get message for client
-    buffer[0] = '0';
-    buffer[1] = '\0';
-    if (answr)
-      buffer[0] = '1';
-
-    // send message to client
-    socket.send(buffer);*/
   }
 
   return;
@@ -294,7 +285,7 @@ int main() {
     printf("[DEBUG][%s] Service is up and running ... waiting for input\n",
            date_str(now_str));
 
-    /* creating hearing child socket */
+    // creating hearing child socket
     Socket child_socket = server_sock.accept(sock_status);
     if (sock_status < 0) {
       fprintf(stderr, "[FATAL][%s] Failed to create child socket ... exiting\n",
@@ -303,7 +294,7 @@ int main() {
     }
     printf("[DEBUG][%s] Waiting for instructions ...\n", date_str(now_str));
 
-    /* communicate with client */
+    // communicate with client
     chat(child_socket, params);
 
   } catch (std::exception &e) {
@@ -311,7 +302,7 @@ int main() {
     fprintf(stderr, "[FATAL][%s] ... exiting\n", date_str(now_str));
   }
 
-  /* shutdown system */
+  // shutdown system
   system_shutdown();
 
   return 0;

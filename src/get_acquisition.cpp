@@ -93,14 +93,12 @@ public:
         mbuf,
         "info:acquiring image ...;status:acquiring;image:%03d/%03d;time:", image_nr,
         num_images);
-    printf("---> Thread Construction; for %d/%d, every %ld millisec, writing: %s <---\n", img_nr,
-           num_img, every_ms, mbuf);
   };
 
   void report() noexcept {
     int it = 0;
     auto t_start = std::chrono::high_resolution_clock::now();
-    while (!stop_reporting_thread) {
+    while (!stop_reporting_thread && !acquisition_thread_finished) {
       auto t_now = std::chrono::high_resolution_clock::now();
       long from_thread_start =
           std::chrono::duration_cast<std::chrono::milliseconds>(t_now - t_start)
@@ -114,12 +112,12 @@ public:
 
       date_str(mbuf + len_const_prt);
       std::sprintf(mbuf + std::strlen(mbuf),
-                   ";progperc:%d;sprogperc:%d;elapsedt:%ld;selapsedt:%ld",
-                   image_done, series_done, from_thread_start,
-                   from_acquisition_start);
+                   ";progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f",
+                   image_done, series_done, from_thread_start/1e3,
+                   from_acquisition_start/1e3);
       socket->send(mbuf);
 
-      printf("--> sending: [%s]; sleeping for %ld <--\n", mbuf, every_ms);
+      if (stop_reporting_thread || acquisition_thread_finished) break;
       std::this_thread::sleep_for(std::chrono::milliseconds(every_ms));
       ++it;
     }
@@ -139,6 +137,7 @@ private:
 };
 
 void wait_for_acquisition(int& status) noexcept {
+    acquisition_thread_finished = false;
     status = WaitForAcquisition();
     if (status != DRV_SUCCESS) {
       /*fprintf(stderr,
@@ -150,6 +149,7 @@ void wait_for_acquisition(int& status) noexcept {
     }
     stop_reporting_thread = true;
     acquisition_thread_finished = true;
+    status = 0;
     return;
 }
 
@@ -540,6 +540,9 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
 /// @param[in] ypixels Number of y-axis pixels, aka height
 /// @param[in] img_buffer An array of int32_t large enough to hold
 ///                    xpixels*ypixels elements
+/// @note remember to set the (extern) variables:
+/// extern int stop_reporting_thread;
+/// extern int acquisition_thread_finished;
 int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
                     int xpixels, int ypixels, at_32 *img_buffer,
                     const Socket &socket) noexcept {
@@ -576,6 +579,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   auto exp_start_at = std::chrono::high_resolution_clock::now();
   stop_reporting_thread = false;
+  acquisition_thread_finished = false;
   std::thread rthread(report_lambda,
                       ThreadReporter(&socket, millisec_per_image,
                                     total_millisec, 1,
@@ -587,8 +591,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf));
     fprintf(stderr, "[ERROR][%s] %s", date_str(buf),
             get_start_acquisition_status_string(error, acq_str));
-    AbortAcquisition();
     stop_reporting_thread = true;
+    AbortAcquisition();
+    acquisition_thread_finished = true;
     rthread.join();
     socket_sprintf(socket, sbuf, "done;error:1;info:start acquisition error, image %d/%d",
                  1, 1);
@@ -630,26 +635,33 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   }*/
   int wait_acquisition_status;
   abort_exposure_set = 0;
-  acquisition_thread_finished = 0;
-  acquisition_thread_finished = false;
   std::thread athread(wait_for_acquisition, std::ref(wait_acquisition_status));
 
   while (!acquisition_thread_finished) {
     if (abort_exposure_set) {
       CancelWait();
+      AbortAcquisition();
       printf("[DEBUG][%s] Abort exposure set! Aborting exposure ...\n", date_str(buf));
       stop_reporting_thread = true;
-      break;
+      acquisition_thread_finished = true;
+      athread.join();
+      rthread.join();
+      socket_sprintf(socket, sbuf, "done;status:error (abort acquisition requested);error:%d", 100);
+      return 1;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
+  // waiting for acquisition ended ok
   athread.join();
   auto exp_stop_at = std::chrono::high_resolution_clock::now();
   stop_reporting_thread = true;
   rthread.join();
-  if (wait_acquisition_status)
+  if (wait_acquisition_status) {
+    fprintf(stderr, "[ERROR][%s] Error while waiting for acquisition to end! (traceback: %s)\n", date_str(buf), __func__);
     socket_sprintf(socket, sbuf, "done;error:1;status:error;error:%d", 10);
+    return 110;
+  }
 
 #ifdef USE_USHORT
   unsigned short *uimg_buffer = new unsigned short[xpixels * ypixels];
@@ -728,7 +740,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     }
     // an error occured
     AbortAcquisition();
-    socket_sprintf(socket, sbuf, "done;error:1;status:error;error:%d", retstat);
+    socket_sprintf(socket, sbuf, "done;status:error (failed getting acquired data);error:%d", retstat);
     return retstat;
   }
 
