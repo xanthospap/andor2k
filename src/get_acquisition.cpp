@@ -72,7 +72,7 @@ int exposure2tick_every(long iexp) noexcept {
     return iexp / 10L;
   } else if (iexp < 120000) {
     return iexp / 15L;
-  } else if (iexp < 5*60000) {
+  } else if (iexp < 5 * 60000) {
     return iexp / 20L;
   } else {
     int nr = iexp / max_tick;
@@ -82,17 +82,15 @@ int exposure2tick_every(long iexp) noexcept {
 
 class ThreadReporter {
 public:
-  ThreadReporter(const Socket *s, long exp_msec, long tot_ms,
-                 int img_nr, int num_img,
-                 const std_time_point &s_start) noexcept
-      : socket(s), image_nr(img_nr), num_images(num_img),
-        exposure_ms(exp_msec), total_ms(tot_ms), series_start(s_start) {
+  ThreadReporter(const Socket *s, long exp_msec, long tot_ms, int img_nr,
+                 int num_img, const std_time_point &s_start) noexcept
+      : socket(s), image_nr(img_nr), num_images(num_img), exposure_ms(exp_msec),
+        total_ms(tot_ms), series_start(s_start) {
     every_ms = exposure2tick_every(exp_msec);
     clear_buf();
     len_const_prt = std::sprintf(
-        mbuf,
-        "info:acquiring image ...;status:acquiring;image:%03d/%03d;time:", image_nr,
-        num_images);
+        mbuf, "info:acquiring image ...;status:acquiring;image:%03d/%03d;time:",
+        image_nr, num_images);
   };
 
   void report() noexcept {
@@ -113,44 +111,46 @@ public:
       date_str(mbuf + len_const_prt);
       std::sprintf(mbuf + std::strlen(mbuf),
                    ";progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f",
-                   image_done, series_done, from_thread_start/1e3,
-                   from_acquisition_start/1e3);
+                   image_done, series_done, from_thread_start / 1e3,
+                   from_acquisition_start / 1e3);
       socket->send(mbuf);
 
-      if (stop_reporting_thread || acquisition_thread_finished) break;
+      if (stop_reporting_thread || acquisition_thread_finished)
+        break;
       std::this_thread::sleep_for(std::chrono::milliseconds(every_ms));
       ++it;
     }
   }
 
 private:
-  long every_ms; // sleeps for every_ms milliseconds, then reports
+  long every_ms;        // sleeps for every_ms milliseconds, then reports
   const Socket *socket; // socket to send message to
-  int image_nr, num_images; // current image number, total number of images is sequence
+  int image_nr,
+      num_images; // current image number, total number of images is sequence
   char mbuf[MAX_SOCKET_BUFFER_SIZE]; // char buffer (for message)
-  int len_const_prt; // length of the constant part of the message
-  long exposure_ms; // exposure
-  long total_ms; // 
+  int len_const_prt;           // length of the constant part of the message
+  long exposure_ms;            // exposure
+  long total_ms;               //
   std_time_point series_start; // start of series
 
   void clear_buf() noexcept { std::memset(mbuf, 0, MAX_SOCKET_BUFFER_SIZE); }
 };
 
-void wait_for_acquisition(int& status) noexcept {
-    acquisition_thread_finished = false;
-    status = WaitForAcquisition();
-    if (status != DRV_SUCCESS) {
-      /*fprintf(stderr,
-              "[ERROR][%s] Something happened while waiting for a new "
-              "acquisition! Aborting (traceback: %s)\n",
-              date_str(buf), __func__);*/
-      AbortAcquisition();
-      status = 1;
-    }
-    stop_reporting_thread = true;
-    acquisition_thread_finished = true;
-    status = 0;
-    return;
+void wait_for_acquisition(int &status) noexcept {
+  acquisition_thread_finished = false;
+  status = WaitForAcquisition();
+  if (status != DRV_SUCCESS) {
+    /*fprintf(stderr,
+            "[ERROR][%s] Something happened while waiting for a new "
+            "acquisition! Aborting (traceback: %s)\n",
+            date_str(buf), __func__);*/
+    AbortAcquisition();
+    status = 1;
+  }
+  stop_reporting_thread = true;
+  acquisition_thread_finished = true;
+  status = 0;
+  return;
 }
 
 auto report_lambda = [](ThreadReporter reporter) { reporter.report(); };
@@ -561,7 +561,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf), __func__);
     return 1;
   }
-  
+
   long millisec_per_image, total_millisec;
   if (coarse_exposure_time(params, millisec_per_image, total_millisec)) {
     fprintf(stderr,
@@ -580,10 +580,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   auto exp_start_at = std::chrono::high_resolution_clock::now();
   stop_reporting_thread = false;
   acquisition_thread_finished = false;
-  std::thread rthread(report_lambda,
-                      ThreadReporter(&socket, millisec_per_image,
-                                    total_millisec, 1,
-                                    params->num_images_, exp_start_at));
+  std::thread rthread(
+      report_lambda, ThreadReporter(&socket, millisec_per_image, total_millisec,
+                                    1, params->num_images_, exp_start_at));
 
   if (unsigned error = StartAcquisition(); error != DRV_SUCCESS) {
     char acq_str[MAX_STATUS_STRING_SIZE];
@@ -595,11 +594,12 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     AbortAcquisition();
     acquisition_thread_finished = true;
     rthread.join();
-    socket_sprintf(socket, sbuf, "done;error:1;info:start acquisition error, image %d/%d",
-                 1, 1);
+    socket_sprintf(socket, sbuf,
+                   "done;error:1;info:start acquisition error, image %d/%d", 1,
+                   1);
     return 1;
   }
-  
+
 #ifdef DEBUG
   /*char xbuf[64];
   printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n",
@@ -641,12 +641,15 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     if (abort_exposure_set) {
       CancelWait();
       AbortAcquisition();
-      printf("[DEBUG][%s] Abort exposure set! Aborting exposure ...\n", date_str(buf));
+      printf("[DEBUG][%s] Abort exposure set! Aborting exposure ...\n",
+             date_str(buf));
       stop_reporting_thread = true;
       acquisition_thread_finished = true;
       athread.join();
       rthread.join();
-      socket_sprintf(socket, sbuf, "done;status:error (abort acquisition requested);error:%d", 100);
+      socket_sprintf(socket, sbuf,
+                     "done;status:error (abort acquisition requested);error:%d",
+                     100);
       return 1;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -658,7 +661,10 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   stop_reporting_thread = true;
   rthread.join();
   if (wait_acquisition_status) {
-    fprintf(stderr, "[ERROR][%s] Error while waiting for acquisition to end! (traceback: %s)\n", date_str(buf), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Error while waiting for acquisition to end! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     socket_sprintf(socket, sbuf, "done;error:1;status:error;error:%d", 10);
     return 110;
   }
@@ -740,7 +746,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     }
     // an error occured
     AbortAcquisition();
-    socket_sprintf(socket, sbuf, "done;status:error (failed getting acquired data);error:%d", retstat);
+    socket_sprintf(socket, sbuf,
+                   "done;status:error (failed getting acquired data);error:%d",
+                   retstat);
     return retstat;
   }
 
@@ -777,7 +785,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf), __func__);
   }
   fits.close();
-  
+
   auto ful_stop_at = std::chrono::high_resolution_clock::now();
   socket_sprintf(socket, sbuf,
                  "done;error:0;status:image saving done;info:image %d/%d", 0,
@@ -785,11 +793,21 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   printf("---> sending via socket: %s <---\n", sbuf);
 
   printf("--> Timing Details <--\n");
-  printf("\tExposure duration         %.3f millisec\n", std::chrono::duration<double, std::milli>(exp_stop_at-exp_start_at).count());
-  printf("\tAcquisition duration      %.3f millisec\n", std::chrono::duration<double, std::milli>(acq_stop_at-exp_stop_at).count());
-  printf("\tExposure plus acquisition %.3f millisec\n", std::chrono::duration<double, std::milli>(acq_stop_at-exp_start_at).count());
-  printf("\tFits manipulation         %.3f millisec\n", std::chrono::duration<double, std::milli>(ful_stop_at-acq_stop_at).count());
-  printf("\tFull acquisition          %.3f millisec\n", std::chrono::duration<double, std::milli>(ful_stop_at-exp_start_at).count());
+  printf("\tExposure duration         %.3f millisec\n",
+         std::chrono::duration<double, std::milli>(exp_stop_at - exp_start_at)
+             .count());
+  printf("\tAcquisition duration      %.3f millisec\n",
+         std::chrono::duration<double, std::milli>(acq_stop_at - exp_stop_at)
+             .count());
+  printf("\tExposure plus acquisition %.3f millisec\n",
+         std::chrono::duration<double, std::milli>(acq_stop_at - exp_start_at)
+             .count());
+  printf("\tFits manipulation         %.3f millisec\n",
+         std::chrono::duration<double, std::milli>(ful_stop_at - acq_stop_at)
+             .count());
+  printf("\tFull acquisition          %.3f millisec\n",
+         std::chrono::duration<double, std::milli>(ful_stop_at - exp_start_at)
+             .count());
 
   return 0;
 }

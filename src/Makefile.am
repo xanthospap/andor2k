@@ -51,7 +51,9 @@ pkginclude_HEADERS = \
 		cppfits.hpp \
 		andor2kd.hpp \
 		fits_header.hpp \
-        aristarchos.hpp
+        aristarchos.hpp \
+	cdecode.h \
+	ap_base64.h
 
 ##
 ##  Source files (distributed).
@@ -75,7 +77,9 @@ dist_libhelmosandor2k_la_SOURCES = \
 	resolve_image_parameters.cpp \
     vhsspeed.cpp \
 	fits_header.cpp \
-    aristarchos.cpp
+    aristarchos.cpp \
+    cdecode.cpp \
+    ap_base64.cpp
 
 #andor2k_SOURCES = andor2k.cpp
 #andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src

@@ -14,6 +14,9 @@
 #include <openssl/sha.h>
 #include <thread>
 
+#include <b64/cdecode.h>
+#include "ap_base64.h"
+
 using andor2k::ClientSocket;
 using andor2k::Socket;
 
@@ -39,16 +42,132 @@ unsigned int ceil_power2(unsigned int v) noexcept {
   return v;
 }
 
+struct AristrachosCommand {
+  char command[64];
+  int  wait_reply=0;
+  int  sleep_after=0;
+};
+bool response_has_error(const char *response) noexcept {
+  return *response && (response[4] == '?' || response[5] == '?');
+}
+
+// header must be of size ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE
+char *send_request_header_sequence(int max_tries, char *header) noexcept {
+
+  char dbuf[32];
+
+  // make the request
+  AristrachosCommand cmd_sequence[4];
+  std::strcpy(cmd_sequence[0].command, "0003RD;");
+  cmd_sequence[0].wait_reply = false;
+  cmd_sequence[0].sleep_after = 8;
+  std::strcpy(cmd_sequence[1].command, "0006RE ON;");
+  cmd_sequence[1].wait_reply = false;
+  cmd_sequence[1].sleep_after = 0;
+  std::strcpy(cmd_sequence[2].command, "0006RE OF;");
+  cmd_sequence[2].wait_reply = true;
+  cmd_sequence[2].sleep_after = 2;
+  std::strcpy(cmd_sequence[3].command, "0003RS;");
+  cmd_sequence[3].wait_reply = false;
+  cmd_sequence[3].sleep_after = 0;
+  
+  /*
+  AristrachosCommand cmd_sequence[3];
+  std::strcpy(cmd_sequence[0].command, "0006RE ON;");
+  cmd_sequence[0].wait_reply = false;
+  cmd_sequence[0].sleep_after = 2;
+  std::strcpy(cmd_sequence[1].command, "0006RE OF;");
+  cmd_sequence[1].wait_reply = false;
+  cmd_sequence[1].sleep_after = 5;
+  std::strcpy(cmd_sequence[2].command, "0006RD BF;");
+  cmd_sequence[2].wait_reply = true;
+  cmd_sequence[2].sleep_after = 1;
+  */
+
+  // open socket and exchange messages
+  int count = 0;
+  int error = 1;
+  while (count < max_tries && error) {
+    error = 0;
+    try {
+      ++count;
+      ClientSocket client_socket(ARISTARCHOS_IP, ARISTARCHOS_PORT);
+      printf("[DEBUG][%s] Connection to FCC at %s:%d!\n", date_str(dbuf), ARISTARCHOS_IP, ARISTARCHOS_PORT);
+
+      for (int i = 0; i < 4; i++) {
+        std::strcpy(str_buffer_short, cmd_sequence[i].command);
+        
+        int bt_sent = client_socket.send(str_buffer_short);
+        if (bt_sent <= 0) {
+          fprintf(stderr,
+                  "[ERROR][%s] Failed to transmit message to FCC! Try: %d/%d, message: [%s] (traceback: %s)\n",
+                  date_str(dbuf), count, max_tries, str_buffer_short, __func__);
+          fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", dbuf, __func__);
+          error = 1;
+          client_socket.close_socket();
+          break;
+        } else {
+          printf("[DEBUG][%s] Command sent to server [%s]\n", date_str(dbuf), str_buffer_short);
+        }
+
+        // std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        if (cmd_sequence[i].wait_reply) { // we need a reply
+          std::memset(header, '\0',
+                      ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE);
+          int bt_recv = client_socket.recv(header,
+                                           ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE);
+          if (bt_recv <= 0) {
+            fprintf(
+                stderr,
+                "[ERROR][%s] Failed to get answer from server; request was: [%s] (traceback: %s)\n",
+                date_str(dbuf), str_buffer_short, __func__);
+                fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", dbuf, __func__);
+                error = 1;
+                client_socket.close_socket();
+                break;
+          } else {
+            printf("[DEBUG][%s] Here is the server response (%dbytes) [%s]\n",
+                   date_str(dbuf), bt_recv, str_buffer_long);
+            if (response_has_error(header)) {
+              fprintf(stderr,
+                      "[ERROR][%s] Seems like the response signaled an error! (traceback: %s)\n",
+                      date_str(dbuf), __func__);
+                fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", dbuf, __func__);
+                error = 1;
+                client_socket.close_socket();
+                break;
+            }
+          }
+        } else {
+          printf("[DEBUG][%s] No reply needed, continuing ...\n", date_str(dbuf));
+        }// end reply
+
+        // end sending/receiving for command #i; sleep if needed
+        std::this_thread::sleep_for(std::chrono::milliseconds(cmd_sequence[i].sleep_after*1000L));
+      }
+      client_socket.close_socket();
+    } catch (std::exception &e) {
+      fprintf(stderr, "[ERROR][%s] Failed to open client Socket for FCC at %s:%d (traceback: %s)\n", date_str(dbuf), ARISTARCHOS_IP, ARISTARCHOS_PORT, __func__);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  if (error) return nullptr;
+  return header;
+}
+
 int get_aristarchos_headers(int num_tries,
                             std::vector<FitsHeader> &headers) noexcept {
   char buf[32];
-  int ctry = 0;
+  // int ctry = 0;
   int error = 1;
   char *decoded_headers = nullptr;
   if (!headers.empty())
     headers.clear();
 
   printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
+  char *raw_headers = send_request_header_sequence(num_tries, str_buffer_long);
+  /*
   while (ctry < num_tries && error) {
 
     error = 0;
@@ -99,19 +218,17 @@ int get_aristarchos_headers(int num_tries,
                 date_str(buf), ctry + 1, num_tries, request, __func__);
     }
 
-    /* if no error occured, we now have the bziped, ubase64 encoded heades
-     * (Aristarchos replied) in the str_buffer_long buffer. It needs to be
-     * uncompressed and unencrypted
-     */
+    // if no error occured, we now have the bziped, ubase64 encoded heades
+    // (Aristarchos replied) in the str_buffer_long buffer. It needs to be
+    // uncompressed and unencrypted
     if (!error) {
       printf(
           "[DEBUG][%s] (%d/%d) Aristarchos replied; now trying to decode the "
           "headers got back\n",
           date_str(buf), ctry + 1, num_tries);
-      /* note that the following function will, at some point, change the
-       * contents of str_buffer_long; do not expect to find the reply string
-       * there after the end of the call
-       */
+      // note that the following function will, at some point, change the
+      // contents of str_buffer_long; do not expect to find the reply string
+      // there after the end of the call
       decoded_headers = decode_message(str_buffer_long);
       if (decoded_headers == nullptr || std::strlen(decoded_headers) < 100) {
         fprintf(stderr,
@@ -125,25 +242,44 @@ int get_aristarchos_headers(int num_tries,
     }
 
     ++ctry;
-  } /* exit loop */
-
-  /* if we decoded the headers, extract them to a vector */
-  if (!error) {
-    printf("[DEBUG][%s] Splitting decoded headers to match FITS headers\n",
-           date_str(buf));
-    error = decoded_str_to_header(decoded_headers, headers);
-    if (error) {
-      fprintf(
-          stderr,
-          "[ERROR][%s] Failed to translate decoded headers to FITS format!\n",
-          date_str(buf));
-      error = 20;
-    }
-  } else {
+  } // exit loop
+  */
+  if (raw_headers == nullptr) {
+    fprintf(
+        stderr,
+        "[ERROR][%s] Failed getting headers from FCC@%s:%d (traceback: %s)\n",
+        date_str(buf), ARISTARCHOS_IP, ARISTARCHOS_PORT, __func__);
+    return 1;
+  }
+  // if no error occured, we now have the bziped, ubase64 encoded heades
+  // (Aristarchos replied) in the str_buffer_long buffer. It needs to be
+  // uncompressed and unencrypted
+  printf("[DEBUG][%s] Got headers from FCC; now trying to decode them\n",
+         date_str(buf));
+  // note that the following function will, at some point, change the
+  // contents of str_buffer_long; do not expect to find the reply string
+  // there after the end of the call
+  decoded_headers = decode_message(raw_headers);
+  if (decoded_headers == nullptr || std::strlen(decoded_headers) < 100) {
     fprintf(stderr,
-            "[ERROR][%s] Failed to get/decode Aristarchos headers after %d "
-            "tries; giving up! (traceback: %s)\n",
-            date_str(buf), num_tries, __func__);
+            "[ERROR][%s] Something went wrong while decoding "
+            "Aristarchos reply/headers; decoding failed (traceback: %s)\n",
+            date_str(buf), __func__);
+    return 1;
+  } else {
+    printf("[DEBUG][%s] Aristarchos headers decoded\n", __func__);
+  }
+
+  // if we decoded the headers, extract them to a vector
+  printf("[DEBUG][%s] Splitting decoded headers to match FITS headers\n",
+         date_str(buf));
+  error = decoded_str_to_header(decoded_headers, headers);
+  if (error) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to translate decoded headers to FITS "
+            "format!\n",
+            date_str(buf));
+    return error;
   }
 
   printf("[DEBUG][%s] Actual number of headers decoded is :%d\n", date_str(buf),
@@ -151,86 +287,103 @@ int get_aristarchos_headers(int num_tries,
   return error;
 }
 
-/// @brief  base64 decode a given string
-/// This function will use the SSL BIO lib to decode a string in base64
-/// encryption format.
-/// @param[in] source string to decode; must be null terminated
-/// @param[out] decoded buffer to place the decoded message; must be at least
-///             of the same size as the input string
-/// @return a pointer to decoded (the null terminated decoded string)
-char *unbase64(const char *source, char *decoded) noexcept {
-  BIO *b64, *bmem;
+   /// @brief  base64 decode a given string
+   /// This function will use the SSL BIO lib to decode a string in base64
+   /// encryption format.
+   /// @param[in] source string to decode; must be null terminated
+   /// @param[out] decoded buffer to place the decoded message; must be at least
+   ///             of the same size as the input string
+   /// @return a pointer to decoded (the null terminated decoded string)
+   char *unbase64(const char *source, char *decoded) noexcept {
+     BIO *b64, *bmem;
 
-  int length = std::strlen(source);
-  std::memset(decoded, '\0', length + 1);
+     int length = std::strlen(source);
+     std::memset(decoded, '\0', length + 1);
 
-  // char* str = std::strdup(source);
-  char *str = new char[length + 1];
-  std::memset(str, '\0', length + 1);
-  std::strcpy(str, source);
+     // char* str = std::strdup(source);
+     char *str = new char[length + 1];
+     std::memset(str, '\0', length + 1);
+     std::strcpy(str, source);
 
-  b64 = BIO_new(BIO_f_base64());
-  bmem = BIO_new_mem_buf(str, length);
-  bmem = BIO_push(b64, bmem);
+     b64 = BIO_new(BIO_f_base64());
+     bmem = BIO_new_mem_buf(str, length);
+     bmem = BIO_push(b64, bmem);
 
-  BIO_read(bmem, decoded, length);
-  BIO_free_all(bmem);
+     BIO_read(bmem, decoded, length);
+     BIO_free_all(bmem);
 
-  delete[] str;
+     delete[] str;
 
-  return decoded;
-}
+     return decoded;
+   }
 
-/// @brief Add char after every n characters in string
-/// This function will create a new copy of the string source, where after every
-/// every character an extra delim character is added. A delim character is also
-/// added at the end of the string. The new string is null terminated.
-/// Example (every=6, delim='-'):
-/// Original string [ab] of size 2, becomes: [ab+]
-/// Original string [abcdef] of size 6, becomes: [abcdef+]
-/// Original string [abcdefg] of size 7, becomes: [abcdef+g+]
-/// Original string [abcdefghijklmnopqrstuvwxy] of size 25, becomes:
-/// [abcdef+ghijkl+mnopqr+stuvwx+y+]
-/// @param[in] source the original, null-terminated string
-/// @param[out] dest the resulting string; the size of the array must be large
-///             enough to hold the result string
-/// @param[in] every Add the delim char after every this number of characters
-/// @param[in] delim character to add
-/// @return A pointer to the dest string
-char *add_char_every(const char *source, char *dest, int every,
-                     char delim) noexcept {
-  int str_length = std::strlen(source);
-  int add_nr = str_length / every + (str_length % every != 0);
-  char *at = dest;
-  int chars_added;
-  for (int i = 0; i < add_nr; i++) {
-    int from = every * i;
-    std::strncpy(at, source + from, every);
-    chars_added = (i + 1) * every < str_length ? every : str_length - i * every;
-    at += chars_added;
-    *at = delim;
-    ++at;
-  }
-  *at = '\0';
+   char *lib64_decode(const char *encoded, std::size_t len) noexcept {
+     char *decoded = new char[len];
+     char *c = decoded;
+     int cnt = 0;
+     base64_decodestate s;
 
-  return dest;
-}
+     base64_init_decodestate(&s);
+     cnt = base64_decode_block(encoded, len, c, &s);
+     c += cnt;
+     *c = '\0';
 
-/// @brief Decode/unzip the string got from Aristarchos after issuing a 0003RD;
-/// When sending the command 0003RD; to Aristarchos, we get a string as reply.
-/// This reply is ubase64 encoded and bzip2 compressed; this function will
-/// decode and decompress the reply string and format it as a readable string,
-/// which is returned.
-/// @param[in] message the raw response as supplied from Aristarchos
-/// @return A string holding the reply in human readable format; note that
-///         the pointer returned is allocated within this function, hence after
-///         done using it you should free it; e.g.
-/// char *reply = decode_message(responce_string);
-/// /* us reply in any way fit ... */
-/// delete[] reply;
-char *decode_message(const char *message) noexcept {
+     printf("--> length from decoded string is %d (from and original of %d)\n", (int)(c-decoded), (int)len);
 
-  char buf[32]; /* for datetime string */
+     return decoded;
+   }
+
+   /// @brief Add char after every n characters in string
+   /// This function will create a new copy of the string source, where after
+   /// every every character an extra delim character is added. A delim
+   /// character is also added at the end of the string. The new string is null
+   /// terminated. Example (every=6, delim='-'): Original string [ab] of size 2,
+   /// becomes: [ab+] Original string [abcdef] of size 6, becomes: [abcdef+]
+   /// Original string [abcdefg] of size 7, becomes: [abcdef+g+]
+   /// Original string [abcdefghijklmnopqrstuvwxy] of size 25, becomes:
+   /// [abcdef+ghijkl+mnopqr+stuvwx+y+]
+   /// @param[in] source the original, null-terminated string
+   /// @param[out] dest the resulting string; the size of the array must be
+   /// large
+   ///             enough to hold the result string
+   /// @param[in] every Add the delim char after every this number of characters
+   /// @param[in] delim character to add
+   /// @return A pointer to the dest string
+   char *add_char_every(const char *source, char *dest, int every,
+                        char delim) noexcept {
+     int str_length = std::strlen(source);
+     int add_nr = str_length / every + (str_length % every != 0);
+     char *at = dest;
+     int chars_added;
+     for (int i = 0; i < add_nr; i++) {
+       int from = every * i;
+       std::strncpy(at, source + from, every);
+       chars_added =
+           (i + 1) * every < str_length ? every : str_length - i * every;
+       at += chars_added;
+       *at = delim;
+       ++at;
+     }
+     *at = '\0';
+
+     return dest;
+   }
+
+   /// @brief Decode/unzip the string got from Aristarchos after issuing a
+   /// 0003RD; When sending the command 0003RD; to Aristarchos, we get a string
+   /// as reply. This reply is ubase64 encoded and bzip2 compressed; this
+   /// function will decode and decompress the reply string and format it as a
+   /// readable string, which is returned.
+   /// @param[in] message the raw response as supplied from Aristarchos
+   /// @return A string holding the reply in human readable format; note that
+   ///         the pointer returned is allocated within this function, hence
+   ///         after done using it you should free it; e.g.
+   /// char *reply = decode_message(responce_string);
+   /// /* us reply in any way fit ... */
+   /// delete[] reply;
+   char *decode_message_rise2(const char *message) noexcept {
+
+     char buf[32]; // for datetime string
 
 #ifdef DEBUG
   printf("[DEBUG][%s] Started decoding message got from Aristarchos "
@@ -240,8 +393,9 @@ char *decode_message(const char *message) noexcept {
          date_str(buf), message, __func__);
 #endif
 
-  /* Find the start of the block. This is usually BF=[B64....]; */
-  const char *hstart = std::strstr(message, "B64");
+  // Find the start of the block. This is usually BF=[B64....];
+  // const char *hstart = std::strstr(message, "B64");
+  const char *hstart = std::strstr(message, "BF=");
   if (!hstart) {
     fprintf(stderr,
             "[ERROR][%s] Failed to decode message; could not find start of "
@@ -249,10 +403,12 @@ char *decode_message(const char *message) noexcept {
             date_str(buf), __func__);
     return nullptr;
   }
-  /* skip "B64" part */
+  // skip "B64" part
+  // hstart += 3;
+  // skip BF= part
   hstart += 3;
 
-  /* Find the end of the block, aka the ';' character */
+  // Find the end of the block, aka the ';' character
   const char *hend = hstart;
   while (*hend && *hend != ';')
     ++hend;
@@ -264,10 +420,10 @@ char *decode_message(const char *message) noexcept {
     return nullptr;
   }
 
-  /* length of block (without the semicolon) */
+  // length of block (without the semicolon)
   int block_sz = hend - hstart;
 
-  /* check the block size */
+  // check the block size
   if (block_sz < 100) {
     fprintf(stderr,
             "[ERROR][%s] Failed to decode message; block too small (traceback: "
@@ -276,9 +432,8 @@ char *decode_message(const char *message) noexcept {
     return nullptr;
   }
 
-  /* copy the block into a new string
-   * allocate memory for header_block_encoded
-   */
+  // copy the block into a new string
+  // allocate memory for header_block_encoded
   char *header_block_encoded = new char[block_sz + 1];
   std::memset(header_block_encoded, '\0', block_sz + 1);
   std::strncpy(header_block_encoded, hstart, block_sz);
@@ -290,14 +445,15 @@ char *decode_message(const char *message) noexcept {
          date_str(buf), header_block_encoded, __func__);
 #endif
 
-  /* create a copy of the encoded string where a newline character is added
-   * after every 64 chars. allocate str_wnl.
-   * At the end of this block, str_wnl string contains the header_block_encoded
-   * (aka the compressed/encoded header block) with newlines after every 64
-   * characters
-   */
+  // create a copy of the encoded string where a newline character is added
+  // after every 64 chars. allocate str_wnl.
+  // At the end of this block, str_wnl string contains the header_block_encoded
+  // (aka the compressed/encoded header block) with newlines after every 64
+  // characters
+  
   int approx_new_sz = block_sz + block_sz / 64 + 2;
   int new_str_sz = ceil_power2(approx_new_sz);
+  /*
   char *str_wnl = new char[new_str_sz];
   std::memset(str_wnl, '\0', new_str_sz);
   add_char_every(header_block_encoded, str_wnl, 64, '\n');
@@ -312,11 +468,13 @@ char *decode_message(const char *message) noexcept {
       "[DEBUG][%s] Encoded header block with new lines: [%s] (traceback %s)\n",
       date_str(buf), str_wnl, __func__);
 #endif
+  */
 
-  /* decode message from base64. the new, dedoced string is stored in decoded
-   * string. allocate memory for decoded.
-   */
-  char *decoded = new char[std::strlen(str_wnl) + 1];
+  // decode message from base64. the new, dedoced string is stored in decoded
+  // string. allocate memory for decoded.
+  // char *decoded = new char[std::strlen(str_wnl) + 1];
+  char *str_wnl = header_block_encoded;
+  char *decoded = new char[block_sz + 1];
   decoded = unbase64(str_wnl, decoded);
   printf("[DEBUG][%s] Info on message manipulation: Size allocated for base64 "
          "decoding: %lu (traceback: %s)\n",
@@ -330,11 +488,10 @@ char *decode_message(const char *message) noexcept {
          date_str(buf), decoded, __func__);
 #endif
 
-  /* decompress (the non-base64 anymore string) from bzip2 format. resulting
-   * string is stored in str_message. the reulting string is stored in the
-   * str_buffer_long buffer, so no new memory is allocated. The string should
-   * now be in a readable format
-   */
+  // decompress (the non-base64 anymore string) from bzip2 format. resulting
+  // string is stored in str_message. the reulting string is stored in the
+  // str_buffer_long buffer, so no new memory is allocated. The string should
+  // now be in a readable format
   char *str_message = str_buffer_long;
   unsigned int str_message_length = 0;
   uncompress_bz2_string(decoded, str_message, str_message_length);
@@ -350,9 +507,8 @@ char *decode_message(const char *message) noexcept {
          date_str(buf), str_message_length, __func__);
 #endif
 
-  /* Find location of first '='. then step back 8 characters. This is the
-   * true start of the string
-   */
+  // Find location of first '='. then step back 8 characters. This is the
+  // true start of the string
   int error = 0;
   char *nstart = std::strchr(str_message, '=');
   if (!nstart || !(nstart - str_message >= 8)) {
@@ -364,9 +520,8 @@ char *decode_message(const char *message) noexcept {
   }
   nstart -= 8;
 
-  /* add newlines after every 80 chars to the string starting at nstart (note
-   * that nstart points somwhere in the str_message buffer).
-   */
+  // add newlines after every 80 chars to the string starting at nstart (note
+  // that nstart points somwhere in the str_message buffer).
   if (!error) {
     approx_new_sz = std::strlen(nstart);
     approx_new_sz += approx_new_sz / 80 + 2;
@@ -393,12 +548,140 @@ char *decode_message(const char *message) noexcept {
          date_str(buf), str_wnl, __func__);
 #endif
 
-  /* deallocate memory */
+  // deallocate memory
   delete[] header_block_encoded;
   // delete[] str_wnl; this holds the final string !
   delete[] decoded;
 
   return error ? nullptr : str_wnl;
+}
+   /// @brief Decode/unzip the string got from Aristarchos after issuing a
+   /// 0003RD; When sending the command 0003RD; to Aristarchos, we get a string
+   /// as reply. This reply is ubase64 encoded and bzip2 compressed; this
+   /// function will decode and decompress the reply string and format it as a
+   /// readable string, which is returned.
+   /// @param[in] message the raw response as supplied from Aristarchos
+   /// @return A string holding the reply in human readable format; note that
+   ///         the pointer returned is allocated within this function, hence
+   ///         after done using it you should free it; e.g.
+   /// char *reply = decode_message(responce_string);
+   /// /* us reply in any way fit ... */
+   /// delete[] reply;
+   char *decode_message(const char *message) noexcept {
+
+     char buf[32]; // for datetime string
+
+#ifdef DEBUG
+  printf("[DEBUG][%s] Started decoding message got from Aristarchos "
+         "(traceback: %s)\n",
+         date_str(buf), __func__);
+  printf("[DEBUG][%s] Message to decode is: [%s] (traceback: %s)\n",
+         date_str(buf), message, __func__);
+#endif
+
+  // Find the start of the block. This is usually BF=[B64....];
+  const char *hstart = std::strstr(message, "BF=");
+  if (!hstart) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; could not find start of "
+            "block \"B64\" (traceback: %s)\n",
+            date_str(buf), __func__);
+    return nullptr;
+  }
+  // skip BF= part
+  hstart += 3;
+
+  // Find the end of the block, aka the ';' character
+  /*const char *hend = hstart;
+  while (*hend && (*hend != ';' && *hend=='!'))
+    ++hend;*/
+  const char *hend = message + std::strlen(message) - 1;
+  // printf("---> last char=%c\n", *hend);
+  while (*hend==';' || *hend=='!') {
+    // printf("---> skipping char %c\n", *hend);
+    --hend;
+  }
+  // printf("---> length of message         : %lu\n", std::strlen(message));
+  // printf("---> length of message (no beg): %lu\n", std::strlen(hstart));
+  // printf("---> length of end-start       : %lu\n", hend-hstart+1);
+
+  /*if (*hend != ';') {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; could not find end of block "
+            "\";\" (traceback: %s)\n",
+            date_str(buf), __func__);
+    return nullptr;
+  }*/
+
+  // length of block (without the semicolon)
+  int block_sz = hend - hstart + 1;
+
+  // check the block size
+  if (block_sz < 100) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed to decode message; block too small (traceback: "
+            "%s)\n",
+            date_str(buf), __func__);
+    return nullptr;
+  }
+
+  // copy the block into a new string
+  // allocate memory for header_block_encoded
+  char *header_block_encoded = new char[block_sz + 1];
+  std::memset(header_block_encoded, '\0', block_sz + 1);
+  std::strncpy(header_block_encoded, hstart, block_sz);
+#ifdef DEBUG
+  printf("[DEDUB][%s] Allocated memmory for header_block_encoded of size: %d "
+         "(traceback: %s)\n",
+         date_str(buf), block_sz + 1, __func__);
+  printf("[DEBUG][%s] Encoded header block: [%s] (traceback %s)\n",
+         date_str(buf), header_block_encoded, __func__);
+#endif
+
+  //char *decoded = lib64_decode(header_block_encoded, block_sz);
+  char *decoded = new char[block_sz + 1];
+  char *decoded_ap = new char[block_sz + 1];
+  unbase64(header_block_encoded, decoded);
+  char *decoded2 = lib64_decode(header_block_encoded, block_sz);
+  int bdecoded = Base64decode(decoded_ap, header_block_encoded);
+  printf("---> Apple decoded %d chars from input of %d\n", bdecoded, block_sz);
+  int bio_lib = false, bio_ap = false, lib_ap = false;
+  for (int i=0; i<block_sz; i++) {
+    if (decoded[i] != decoded2[i]) bio_lib++;
+    if (decoded[i] != decoded_ap[i]) bio_ap++;
+    if (decoded2[i] != decoded_ap[i]) lib_ap++;
+  }
+  printf("---> BIO & Lib differ: %d\n", bio_lib);
+  printf("---> BIO & Apl differ: %d\n", bio_ap);
+  printf("---> Lib & Apl differ: %d\n", lib_ap );
+  delete[] decoded2;
+  delete[] decoded_ap;
+
+  // decompress (the non-base64 anymore string) from bzip2 format. resulting
+  // string is stored in str_message. the reulting string is stored in the
+  // str_buffer_long buffer, so no new memory is allocated. The string should
+  // now be in a readable format
+  char *str_message = str_buffer_long;
+  unsigned int str_message_length = 0;
+  uncompress_bz2_string(decoded, str_message, str_message_length);
+#ifdef DEBUG
+  printf("[DEBUG][%s] Using buffer of size: %d bytes to un-bzip2 decoded "
+         "string(traceback: %s)\n",
+         date_str(buf), ARISTARCHOS_DECODE_BUFFER_SIZE, __func__);
+  printf(
+      "[DEBUG][%s] Block decoded and unziped and now is [%s] (traceback: %s)\n",
+      date_str(buf), str_message, __func__);
+  printf("[DEBUG][%s] Note that the size of the uncompressed block is: %d "
+         "bytes (traceback: %s)\n",
+         date_str(buf), str_message_length, __func__);
+#endif
+
+  // deallocate memory
+  delete[] header_block_encoded;
+  // delete[] str_wnl; this holds the final string !
+  delete[] decoded;
+
+  return str_message;
 }
 
 /// @brief Decompress a bzip2 string
@@ -422,10 +705,11 @@ char *uncompress_bz2_string(char *source, char *dest,
 
   std::memset(dest, '\0', ARISTARCHOS_DECODE_BUFFER_SIZE);
   unsigned int sourceLen = std::strlen(source);
+  destLen = 1024 * 1024;
   int error;
 
   if (error =
-          BZ2_bzBuffToBuffDecompress(dest, &destLen, source, sourceLen, 0, 0);
+          BZ2_bzBuffToBuffDecompress(dest, &destLen, source, sourceLen, 0, 4);
       error == BZ_OK) {
     dest[destLen] = '\0';
     return dest;

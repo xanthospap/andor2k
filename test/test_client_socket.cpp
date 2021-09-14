@@ -6,9 +6,9 @@
 #include <chrono>
 #include <ctime>
 #endif
-#include <thread>
-#include <pthread.h>
 #include <chrono>
+#include <pthread.h>
+#include <thread>
 #include <unistd.h>
 
 using namespace std::chrono_literals;
@@ -41,10 +41,11 @@ int status_error = 0;
 void *getStatus(void *ptr) noexcept {
   status_error = 0;
   ptr = nullptr;
-  if (ptr) printf("why is this not null?\n");
-  
+  if (ptr)
+    printf("why is this not null?\n");
+
   try {
-    ClientSocket status_socket("localhost", 8080+1);
+    ClientSocket status_socket("localhost", 8080 + 1);
     printf("Created client status socket\n");
 
     char buf[1024];
@@ -61,23 +62,24 @@ void *getStatus(void *ptr) noexcept {
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR] Exception caught!\n");
     status_error = 1;
-    return (void*)(&status_error);
+    return (void *)(&status_error);
   }
 }
 
 int main() {
-  //pthread_t status_thread;
-  //int status_thread_error = pthread_create(&status_thread, NULL, getStatus, NULL);
+  // pthread_t status_thread;
+  // int status_thread_error = pthread_create(&status_thread, NULL, getStatus,
+  // NULL);
 
   try {
     // create and connect ....
     printf("Creating client socket ... connecting to localhost at 8080 ...");
     ClientSocket client_socket("127.0.0.1", 8080);
-    
+
     // chat with server via the socket
     printf(" ready! can now talk to server side.\n");
     chat(client_socket);
-  
+
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR] Exception caught!\n");
     // fprintf(stderr, "%s", e.what().c_str());
