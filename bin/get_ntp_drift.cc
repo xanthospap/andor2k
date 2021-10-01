@@ -1,19 +1,17 @@
-/* This code will query a ntp server for the local time and display
+// This code will query a ntp server for the local time and display
+// it.  it is intended to show how to use a NTP server as a time
+// source for a simple network connected device.
+// This is the C version.  The orignal was in Perl
+//
+// For better clock management see the offical NTP info at:
+// http://www.eecis.udel.edu/~ntp/
+//
+// written by Tim Hogard (thogard@abnormal.com)
+// Thu Sep 26 13:35:41 EAST 2002
+// Converted to C Fri Feb 21 21:42:49 EAST 2003
+// this code is in the public domain.
+// it can be found here http://www.abnormal.com/~thogard/ntp/
 
- * it.  it is intended to show how to use a NTP server as a time
- * source for a simple network connected device.
- * This is the C version.  The orignal was in Perl
- *
- * For better clock management see the offical NTP info at:
- * http://www.eecis.udel.edu/~ntp/
- *
- * written by Tim Hogard (thogard@abnormal.com)
- * Thu Sep 26 13:35:41 EAST 2002
- * Converted to C Fri Feb 21 21:42:49 EAST 2003
- * this code is in the public domain.
- * it can be found here http://www.abnormal.com/~thogard/ntp/
- *
- */
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -64,12 +62,10 @@ server_addr.sin_addr.s_addr = inet_addr(hostname);
 server_addr.sin_port=htons(portno);
 //printf("ipaddr (in hex): %x\n",server_addr.sin_addr);
 
-/*
- * build a message.  Our message is all zeros except for a one in the
- * protocol version field
- * msg[] in binary is 00 001 000 00000000 
- * it should be a total of 48 bytes long
-*/
+// build a message.  Our message is all zeros except for a one in the
+// protocol version field
+// msg[] in binary is 00 001 000 00000000 
+// it should be a total of 48 bytes long
 
 // send the data
 printf("sending data..\n");
@@ -88,30 +84,26 @@ for(i=0;i<12;i++) {
     std::cout << "Round number " << i << " time is " << ctime(&tmit2)  << std::endl;
 }
 
-/*
- * The high word of transmit time is the 10th word we get back
- * tmit is the time in seconds not accounting for network delays which
- * should be way less than a second if this is a local NTP server
- */
+// The high word of transmit time is the 10th word we get back
+// tmit is the time in seconds not accounting for network delays which
+// should be way less than a second if this is a local NTP server
+
 //tmit=ntohl((time_t)buf[10]);    //# get transmit time
 tmit=ntohl((time_t)buf[4]);    //# get transmit time
 printf("tmit=%d\n",tmit);
 
-/*
- * Convert time to unix standard time NTP is number of seconds since 0000
- * UT on 1 January 1900 unix time is seconds since 0000 UT on 1 January
- * 1970 There has been a trend to add a 2 leap seconds every 3 years.
- * Leap seconds are only an issue the last second of the month in June and
- * December if you don't try to set the clock then it can be ignored but
- * this is importaint to people who coordinate times with GPS clock sources.
- */
+// Convert time to unix standard time NTP is number of seconds since 0000
+// UT on 1 January 1900 unix time is seconds since 0000 UT on 1 January
+// 1970 There has been a trend to add a 2 leap seconds every 3 years.
+// Leap seconds are only an issue the last second of the month in June and
+// December if you don't try to set the clock then it can be ignored but
+// this is importaint to people who coordinate times with GPS clock sources.
 tmit-= 2208988800U; 
-//printf("tmit=%d\n",tmit);
-/* use unix library function to show me the local time (it takes care
- * of timezone issues for both north and south of the equator and places
- * that do Summer time/ Daylight savings time.
- */
 
+//printf("tmit=%d\n",tmit);
+// use unix library function to show me the local time (it takes care
+// of timezone issues for both north and south of the equator and places
+// that do Summer time/ Daylight savings time.
 
 //#compare to system time
 //printf("Time: %s",ctime(&tmit));

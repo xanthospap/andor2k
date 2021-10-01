@@ -4,7 +4,8 @@ noinst_PROGRAMS = testClientSocket \
   testFitsFilename \
   testFitsHeaders \
   testFCC \
-  testParsingFCCResponse
+  testParsingFCCResponse \
+  testNtpTime
 
 MCXXFLAGS = \
 	-std=c++17 \
@@ -58,3 +59,8 @@ testFCC_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lss
 testParsingFCCResponse_SOURCES   = test_parsing_fcc_response.cpp
 testParsingFCCResponse_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
 testParsingFCCResponse_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lssl -lcrypto -lb64 -lbz2 -lm
+
+testNtpTime_SOURCES   = test_ntp_time.cpp
+testNtpTime_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
+testNtpTime_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lssl -lcrypto -lb64 -lbz2 -lm
+

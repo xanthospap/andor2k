@@ -3,8 +3,6 @@
 ## ------------------------------------------------
 ##
 lib_LTLIBRARIES = libhelmosandor2k.la
-#bin_PROGRAMS = andor2k \
-#	andor2kd
 
 ##
 ##  Only use the following flags for debuging purposes.
@@ -52,9 +50,7 @@ pkginclude_HEADERS = \
 		andor2kd.hpp \
 		fits_header.hpp \
         aristarchos.hpp \
-	cbase64.hpp \
-	cdecode.h \
-	ap_base64.h
+	cbase64.hpp
 
 ##
 ##  Source files (distributed).
@@ -80,13 +76,4 @@ dist_libhelmosandor2k_la_SOURCES = \
 	fits_header.cpp \
     aristarchos.cpp \
     cbase64.cpp \
-    cdecode.cpp \
-    ap_base64.cpp
-
-#andor2k_SOURCES = andor2k.cpp
-#andor2k_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
-#andor2k_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor
-#
-#andor2kd_SOURCES = andor2kd.cpp
-#andor2kd_CXXFLAGS = $(MXXFLAGS) -I$(top_srcdir)/src
-#andor2kd_LDADD = $(top_srcdir)/src/libhelmosandor2k.la -landor
+    get_ntp_time.cpp

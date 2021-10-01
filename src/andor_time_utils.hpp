@@ -11,6 +11,9 @@ using std_time_point = std::chrono::system_clock::time_point;
 
 enum class DateTimeFormat : char { YMD, YMDHMfS, YMDHMS, HMS, HMfS };
 
+
+int get_ntp_time(const char *ntp_server, std_time_point& ntpt) noexcept;
+
 double start_time_correction_impl(float exposure, float vsspeed, float hsspeed,
                                   int img_rows, int img_cols) noexcept;
 

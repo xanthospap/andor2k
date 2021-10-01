@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 #include "andor2k.hpp"
+#include "andor_time_utils.hpp"
 
 // Slightly modified version of the ntpclient by David Lettier
 // see https://lettier.github.io/posts/2016-04-26-lets-make-a-ntp-client-in-c.html
@@ -52,9 +53,10 @@ struct ntp_packet {
   uint32_t txTm_f; // 32 bits. Transmit time-stamp fraction of a second.
 
 };// ntp_packet (Total: 384 bits or 48 bytes.)
+
 static_assert(sizeof(ntp_packet) == 48);
 
-int get_ntp_time(const char *ntp_server) noexcept {
+int get_ntp_time(const char *ntp_server, std_time_point& ntpt) noexcept {
     // Socket file descriptor and the n return result from writing/reading from 
     // the socket. We are using base c sockets here, cause we want UDP
     int sockfd, n;
@@ -134,11 +136,15 @@ int get_ntp_time(const char *ntp_server) noexcept {
   packet.txTm_s = ntohl(packet.txTm_s); // Time-stamp seconds.
   packet.txTm_f = ntohl(packet.txTm_f); // Time-stamp fraction of a second.
 
-    // Extract the 32 bits that represent the time-stamp seconds (since NTP 
-    // epoch) from when the packet left the server.
+  // Extract the 32 bits that represent the time-stamp seconds (since NTP 
+  // epoch) from when the packet left the server.
   // Subtract 70 years worth of seconds from the seconds since 1900.
   // This leaves the seconds since the UNIX epoch of 1970.
   // (1900)-------------(1970)*****************(Time Packet Left the Server)
   time_t txTm = (time_t) (packet.txTm_s - NTP_TIMESTAMP_DELTA);
+ 
+  ntpt = std::chrono::system_clock::from_time_t(txTm);
+  ntpt += std::chrono::nanoseconds((long)packet.txTm_f * 1'000'000'000L);
   
+  return 0; 
 }
