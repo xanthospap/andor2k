@@ -52,6 +52,7 @@ pkginclude_HEADERS = \
 		andor2kd.hpp \
 		fits_header.hpp \
         aristarchos.hpp \
+	cbase64.hpp \
 	cdecode.h \
 	ap_base64.h
 
@@ -78,6 +79,7 @@ dist_libhelmosandor2k_la_SOURCES = \
     vhsspeed.cpp \
 	fits_header.cpp \
     aristarchos.cpp \
+    cbase64.cpp \
     cdecode.cpp \
     ap_base64.cpp
 

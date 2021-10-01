@@ -11,19 +11,31 @@ constexpr char ARISTARCHOS_IP[] = "195.251.202.253";
 constexpr int ARISTARCHOS_PORT = 50001;
 
 /// @brief Buffer size for communication with Aristarchos
-// constexpr int ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE = 4096;
-
-/// @brief Max size of the FCC response (for the encrypted/compressed FITS
-///        header buffer)
+constexpr int ARISTARCHOS_MAX_SOCKET_BUFFER_SIZE = 4096;
 constexpr int ARISTARCHOS_MAX_HEADER_SIZE = 4096;
 
 /// @brief Buffer size used for decoding (bzip2 && base64) of 1Mb
 /// @todo is this too large?
-// constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
+constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
 
-int decoded_str_to_header(const char *decoded_msg, unsigned msg_len, 
+int decoded_str_to_header(const char *decoded_msg,
                           std::vector<FitsHeader> &header_vec) noexcept;
 
+char *generate_request_string(const char *request, char *command) noexcept;
+
+int send_aristarchos_request(int delay_sec, const char *request, int need_reply,
+                             char *reply) noexcept;
+
+char *uncompress_bz2_string(char *source, char *dest,
+                            unsigned int &destLen) noexcept;
+
+char *unbase64(const char *source, char *decoded) noexcept;
+
+char *add_char_every(const char *source, char *dest, int every,
+                     char delim) noexcept;
+
+// char *decode_message(const char *message) noexcept;
+char *decode_message(const char *message, char *out) noexcept;
 char *decode_message(char *raw_message, char *ascii_str, int buff_len, unsigned& ascii_len) noexcept;
 
 int get_aristarchos_headers(int num_tries,

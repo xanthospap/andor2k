@@ -247,6 +247,8 @@ public:
   }
 
   int close_socket() noexcept { return m_socket.socket_close(); }
+  
+  auto sockid() noexcept { return m_socket.sockid(); }
 
 private:
   Socket m_socket;
@@ -283,6 +285,8 @@ public:
 
   /// @brief Accept a connection on a socket
   Socket accept(int &status) noexcept { return m_socket.accept(status); }
+
+  auto sockid() noexcept { return m_socket.sockid(); }
 
 private:
   Socket m_socket;
