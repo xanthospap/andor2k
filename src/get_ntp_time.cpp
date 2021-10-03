@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <cmath>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -55,6 +56,38 @@ struct ntp_packet {
 };// ntp_packet (Total: 384 bits or 48 bytes.)
 
 static_assert(sizeof(ntp_packet) == 48);
+
+static_assert(sizeof(double) == sizeof(uint64_t));
+union ntp_word_10 {
+    uint64_t u64t;
+    double   asd;
+};
+
+/*double uint2double(uint32_t u32high, uint32_t u32low) noexcept {
+  // make the u32 bit ints to a single u64 int
+  uint64_t u64_int = static_cast<uint64_t>(u32high) << 32 | u32low;
+  // take all the bits as a 64 bit unsigned integer, stick it in a floating
+  // point variable with at least 64 bits of mantissa (usually double) and do a
+  // floating point divide by 2^32
+  ntp_word_10 w10{u64_int};
+  // return *(double *)(&u64_int) / static_cast<double>((uint64_t)0x100000000);
+  return w10.asd / static_cast<double>((uint64_t)0x100000000);
+}*/
+
+double uint2double(uint32_t u32high, uint32_t u32low) noexcept {
+    double d = static_cast<double>(u32high);
+    double dlow = static_cast<double>(u32low);
+    while (dlow > 1) dlow /= 10e0;
+    return d + dlow;
+}
+
+inline
+int fsec2millisec(uint32_t fsec) noexcept {
+  double dlow = static_cast<double>(fsec);
+  while (dlow > 1)
+    dlow /= 10e0;
+  return static_cast<int>(std::round(dlow * 1e3));
+}
 
 int get_ntp_time(const char *ntp_server, std_time_point& ntpt) noexcept {
     // Socket file descriptor and the n return result from writing/reading from 
@@ -144,7 +177,16 @@ int get_ntp_time(const char *ntp_server, std_time_point& ntpt) noexcept {
   time_t txTm = (time_t) (packet.txTm_s - NTP_TIMESTAMP_DELTA);
  
   ntpt = std::chrono::system_clock::from_time_t(txTm);
-  ntpt += std::chrono::nanoseconds((long)packet.txTm_f * 1'000'000'000L);
-  
-  return 0; 
+  ntpt += std::chrono::milliseconds(fsec2millisec(packet.txTm_f));
+
+  // uint64_t t64 = ui32_to_ui64(packet.txTm_s, packet.txTm_f);
+  // double td = ui64_to_double(t64);
+  // double td = uint2double(packet.txTm_s, packet.txTm_f);
+
+ // printf(">> Integral seconds  : %u\n", packet.txTm_s);
+ // printf(">> Fractional seconds: %u\n", packet.txTm_f);
+ // printf(">> Seconds (double)  : %f\n", td);
+ // printf(">> Integer millisec, : %d\n", fsec2millisec(packet.txTm_f));
+
+      return 0;
 }

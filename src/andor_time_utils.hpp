@@ -23,6 +23,12 @@ std::chrono::nanoseconds start_time_correction(float exposure, float vsspeed,
 
 std::tm strfdt_work(const std_time_point &t, long &fractional_seconds) noexcept;
 
+/*std_time_point timeval_to_timepoint(timeval tv) noexcept {
+  using namespace std::chrono;
+  return system_clock::time_point{seconds{tv.tv_sec} +
+                                  microseconds{tv.tv_usec}};
+}*/
+
 template <DateTimeFormat F>
 char *strfdt(const std_time_point &t, char *buf) noexcept {
   long fsec;
