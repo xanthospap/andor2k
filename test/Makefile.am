@@ -5,7 +5,8 @@ noinst_PROGRAMS = testClientSocket \
   testFitsHeaders \
   testFCC \
   testParsingFCCResponse \
-  testNtpTime
+  testNtpTime \
+  testParallelAbort
 
 MCXXFLAGS = \
 	-std=c++17 \
@@ -64,3 +65,6 @@ testNtpTime_SOURCES   = test_ntp_time.cpp
 testNtpTime_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
 testNtpTime_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lm
 
+testParallelAbort_SOURCES   = test_parallel_abort.cpp
+testParallelAbort_CXXFLAGS  = $(MCXXFLAGS) -I$(top_srcdir)/src #-L$(top_srcdir)/src
+testParallelAbort_LDADD     = $(top_srcdir)/src/libhelmosandor2k.la -landor -lcfitsio -lbz2 -lm -lpthread

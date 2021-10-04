@@ -1,14 +1,15 @@
 #include "andor2k.hpp"
+#include "andor2kd.hpp"
 #include "andor_time_utils.hpp"
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cppfits.hpp>
-#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <thread>
+#include "get_exposure.hpp"
 
 using andor2k::Socket;
 using namespace std::chrono_literals;
@@ -20,9 +21,9 @@ extern int abort_exposure_set;
 extern int stop_reporting_thread;
 extern int acquisition_thread_finished;
 
-int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
+/*int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
                     int xpixels, int ypixels, at_32 *img_buffer,
-                    const Socket &socket) noexcept;
+                    const Socket &socket) noexcept;*/
 int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
                  int xpixels, int ypixels, at_32 *img_buffer,
                  const Socket &socket) noexcept;
@@ -43,17 +44,6 @@ int find_start_time_cor(const FitsHeaders *fheaders,
   return 1;
 }
 
-int socket_sprintf(const Socket &socket, char *buffer, const char *fmt,
-                   ...) noexcept {
-  va_list va;
-  va_start(va, fmt);
-  std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
-  int end = std::vsprintf(buffer, fmt, va);
-  va_end(va);
-  end += std::sprintf(buffer + end, ";time:");
-  date_str(buffer + end);
-  return socket.send(buffer);
-}
 
 int exposure2tick_every(long iexp) noexcept {
   long min_tick = static_cast<long>(0.5e0 * 1e3);
@@ -79,6 +69,7 @@ int exposure2tick_every(long iexp) noexcept {
     return iexp / nr;
   }
 }
+
 
 class ThreadReporter {
 public:
@@ -135,6 +126,7 @@ private:
 
   void clear_buf() noexcept { std::memset(mbuf, 0, MAX_SOCKET_BUFFER_SIZE); }
 };
+
 
 void wait_for_acquisition(int &status) noexcept {
   acquisition_thread_finished = false;
@@ -543,6 +535,7 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
 /// @note remember to set the (extern) variables:
 /// extern int stop_reporting_thread;
 /// extern int acquisition_thread_finished;
+/*
 int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
                     int xpixels, int ypixels, at_32 *img_buffer,
                     const Socket &socket) noexcept {
@@ -601,38 +594,37 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   }
 
 #ifdef DEBUG
-  /*char xbuf[64];
-  printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n",
-         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));*/
+//  char xbuf[64];
+//  printf("[DEBUG][%s] TimingInfo --> StartAcquisition at -> %s\n",
+//         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
 #endif
 
-  /*
-  // get status and loop until acquisition finished
-  int status;
-  GetStatus(&status);
-
-  while (status == DRV_ACQUIRING)
-    GetStatus(&status);
-  auto exp_stop_at = std::chrono::high_resolution_clock::now();
-#ifdef DEBUG
-  //at_start = std::chrono::high_resolution_clock::now();
-  //printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n",
-  //       date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
-#endif
-    stop_reporting = true;
-    rthread.join();
-  */
-  /*if (WaitForAcquisition() != DRV_SUCCESS) {
-    fprintf(stderr,
-            "[ERROR][%s] Something happened while waiting for a new "
-            "acquisition! Aborting (traceback: %s)\n",
-            date_str(buf), __func__);
-    AbortAcquisition();
-    stop_reporting = true;
-    rthread.join();
-    socket_sprintf(socket, sbuf, "done;error:1;status:error;error:%d", 10);
-    return 10;
-  }*/
+//  // get status and loop until acquisition finished
+//  int status;
+//  GetStatus(&status);
+//
+//  while (status == DRV_ACQUIRING)
+//    GetStatus(&status);
+//  auto exp_stop_at = std::chrono::high_resolution_clock::now();
+//#ifdef DEBUG
+//  //at_start = std::chrono::high_resolution_clock::now();
+//  //printf("[DEBUG][%s] TimingInfo --> After Acquisition stoped -> %s\n",
+//  //       date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
+//#endif
+//    stop_reporting = true;
+//    rthread.join();
+//  
+//  if (WaitForAcquisition() != DRV_SUCCESS) {
+//    fprintf(stderr,
+//            "[ERROR][%s] Something happened while waiting for a new "
+//            "acquisition! Aborting (traceback: %s)\n",
+//            date_str(buf), __func__);
+//    AbortAcquisition();
+//    stop_reporting = true;
+//    rthread.join();
+//    socket_sprintf(socket, sbuf, "done;error:1;status:error;error:%d", 10);
+//    return 10;
+//
   int wait_acquisition_status;
   abort_exposure_set = 0;
   std::thread athread(wait_for_acquisition, std::ref(wait_acquisition_status));
@@ -681,9 +673,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 #endif
 
 #ifdef DEBUG
-  /*at_start = std::chrono::high_resolution_clock::now();
-  printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n",
-         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));*/
+//  at_start = std::chrono::high_resolution_clock::now();
+//  printf("[DEBUG][%s] TimingInfo --> After Acquired Data -> %s\n",
+//         date_str(buf), strfdt<DateTimeFormat::YMDHMfS>(at_start, xbuf));
 #endif
 
   // start of exposure time point is now, minus the correction
@@ -810,4 +802,4 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
              .count());
 
   return 0;
-}
+}*/

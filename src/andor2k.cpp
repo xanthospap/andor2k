@@ -1,11 +1,19 @@
 #include "andor2k.hpp"
 #include <cstring>
+#include <mutex>
+#include <condition_variable>
 
 int sig_abort_set = 0;
 int sig_interrupt_set = 0;
 int abort_exposure_set = 0;
 int stop_reporting_thread = 0;
 int acquisition_thread_finished = 0;
+
+std::mutex g_mtx;
+std::mutex g_mtx_abort;
+int abort_set;
+int abort_socket_fd;
+std::condition_variable cv;
 
 void AndorParameters::set_defaults() noexcept {
   camera_num_ = 0;
@@ -73,6 +81,36 @@ char *get_status_string(char *buffer) noexcept {
     break;
   }
   return buffer;
+}
+
+char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept {
+
+  std::memset(buffer, 0, MAX_STATUS_STRING_SIZE);
+    
+    switch (error) {
+    case DRV_SUCCESS:
+      std::strcpy(buffer, "Data acquired successefully");
+      break;
+    case DRV_ACQUIRING:
+      strcpy(buffer, "Acquisition in progress");
+      break;
+    case DRV_ERROR_ACK:
+      strcpy(buffer, "Unable to communicate with card");
+      break;
+    case DRV_P1INVALID:
+      strcpy(buffer, "Invalid pointer");
+      break;
+    case DRV_P2INVALID:
+      strcpy(buffer, "Array size is incorrect");
+      break;
+    case DRV_NO_NEW_DATA:
+      strcpy(buffer, "No acquisition has taken place");
+      break;
+    default:
+      strcpy(buffer, "Undocumented error");
+    }
+
+    return buffer;
 }
 
 char *get_start_acquisition_status_string(unsigned int error,

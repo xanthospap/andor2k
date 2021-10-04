@@ -29,7 +29,6 @@ extern int sig_interrupt_set;
 extern int abort_exposure_set;
 
 // buffers and constants for socket communication
-constexpr int SOCKET_PORT = 8080;
 constexpr int INTITIALIZE_TO_TEMP = -50;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
@@ -203,11 +202,11 @@ int resolve_command(const char *command, const Socket &socket,
 void chat(const Socket &socket, AndorParameters &params) {
   for (;;) {
 
-    /* read message from client into buffer */
+    // read message from client into buffer
     std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
     socket.recv(buffer, 1024);
 
-    /* perform the operation requested by clinet */
+    // perform the operation requested by client
     int answr = resolve_command(buffer, socket, params);
     if (answr == -100) {
       printf(

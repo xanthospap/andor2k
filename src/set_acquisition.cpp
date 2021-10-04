@@ -122,7 +122,8 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
 
-  // try to get/decode Aristarchos headers if requested
+  // try to get/decode Aristarchos headers if requested 
+  // TODO that could be done in another thread to save us some time!
   if (params->ar_hdr_tries_ > 0) {
     std::vector<FitsHeader> ar_headers;
     ar_headers.reserve(150);
@@ -250,7 +251,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                                               ynumpixels, xnumpixels);
   herror = fheaders->update<long>(
       "TIMECORR", start_time_cor.count(),
-      "Timming correction already applied (nanosec)"); // 9
+      "Timming correction already applied (nanosec)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for TIMECORR\n",
             date_str(buf));

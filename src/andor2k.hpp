@@ -38,6 +38,8 @@ constexpr int MAX_COOLING_DURATION = 30;
 /// @brief Max pixels in width/height
 constexpr int MAX_PIXELS_IN_DIM = 2048;
 
+constexpr int SOCKET_PORT = 8080;
+
 constexpr int ABORT_EXIT_STATUS = std::numeric_limits<int>::max();
 
 constexpr int INTERRUPT_EXIT_STATUS = std::numeric_limits<int>::max();
@@ -166,4 +168,5 @@ int coarse_exposure_time(const AndorParameters *params,
 char *get_status_string(char *buf) noexcept;
 char *get_start_acquisition_status_string(unsigned int error,
                                           char *buffer) noexcept;
+char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept;
 #endif

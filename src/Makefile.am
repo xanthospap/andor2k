@@ -50,6 +50,9 @@ pkginclude_HEADERS = \
 		andor2kd.hpp \
 		fits_header.hpp \
         aristarchos.hpp \
+	get_exposure.hpp \
+	acquisition_reporter.hpp \
+	abort_listener.hpp \
 	cbase64.hpp
 
 ##
@@ -75,5 +78,7 @@ dist_libhelmosandor2k_la_SOURCES = \
     vhsspeed.cpp \
 	fits_header.cpp \
     aristarchos.cpp \
+    socket_sprintf.cpp \
     cbase64.cpp \
-    get_ntp_time.cpp
+    get_ntp_time.cpp \
+    get_single_scan.cpp
