@@ -254,7 +254,7 @@ int main() {
     return 10;
   }
 
-  /* report daemon initialization */
+  // report daemon initialization
   printf("[DEBUG][%s] Initializing ANDOR2K daemon service\n",
          date_str(now_str));
 

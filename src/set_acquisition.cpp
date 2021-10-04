@@ -125,7 +125,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   // try to get/decode Aristarchos headers if requested
   if (params->ar_hdr_tries_ > 0) {
     std::vector<FitsHeader> ar_headers;
-    ar_headers.reserve(50);
+    ar_headers.reserve(150);
     if (get_aristarchos_headers(params->ar_hdr_tries_, ar_headers)) {
       fprintf(stderr,
               "[ERROR][%s] Failed to fetch/decode Aristarchos headers "
@@ -165,86 +165,86 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
 
   int herror;
   herror = fheaders->update<float>(
-      "HSSPEED", hsspeed,
-      "Horizontal Shift Speed (microsec / pixel shift)");
+      "HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for HSSPEED\n",
             date_str(buf));
-  
+
   herror = fheaders->update<float>(
       "VSSPEED", vsspeed, "Vertical Shift Speed (microsec / pixel shift)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for VSSPEED\n",
             date_str(buf));
-  
+
   herror = fheaders->update<float>("EXPOSED", actual_exposure,
                                    "Requested exposure time (sec)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for EXPOSED\n",
             date_str(buf));
-  
+
   herror = fheaders->update<float>("EXPTIME", actual_exposure,
                                    "Requested exposure time (sec)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for EXPTIME\n",
             date_str(buf));
-  
-  herror = fheaders->update<int>("VBIN", params->image_vbin_,
-                                 "Vertical binning");
+
+  herror =
+      fheaders->update<int>("VBIN", params->image_vbin_, "Vertical binning");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for VBIN\n",
             date_str(buf));
-  
-  herror = fheaders->update<int>("HBIN", params->image_hbin_,
-                                 "Horizontal Binning"); 
+
+  herror =
+      fheaders->update<int>("HBIN", params->image_hbin_, "Horizontal Binning");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for HBIN\n",
             date_str(buf));
-  
+
   herror = fheaders->update("INSTRUME", "ANDOR2048x2048_BV",
                             "Instrument used to acquire data");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for INSTRUME\n",
             date_str(buf));
-  
-  herror = fheaders->update("OBJECT", params->object_name_, "Object identifier");
+
+  herror =
+      fheaders->update("OBJECT", params->object_name_, "Object identifier");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for INSTRUME\n",
             date_str(buf));
-  
+
   herror = fheaders->update("FILTER", params->filter_name_, "Filter used");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for FILTER\n",
             date_str(buf));
-  
-  //herror = fheaders->update("ORIGIN", "NOA -- Mt. Chelmos", "Observatory");
-  //if (herror < 0)
+
+  // herror = fheaders->update("ORIGIN", "NOA -- Mt. Chelmos", "Observatory");
+  // if (herror < 0)
   //  fprintf(stderr, "[WRNNG][%s] Failed to update header for ORIGIN\n",
   //          date_str(buf));
-  
-  //herror = fheaders->update("TELESCOP", "Aristarchos",
+
+  // herror = fheaders->update("TELESCOP", "Aristarchos",
   //                 "Telescope used to acquire data");
-  //if (herror < 0)
+  // if (herror < 0)
   //  fprintf(stderr, "[WRNNG][%s] Failed to update header for TELESCOP\n",
   //          date_str(buf));
-  
-  //herror = fheaders->update<float>("HEIGHT", 2326.0, "height above sea level [m]");
-  //if (herror < 0)
+
+  // herror = fheaders->update<float>("HEIGHT", 2326.0, "height above sea level
+  // [m]"); if (herror < 0)
   //  fprintf(stderr, "[WRNNG][%s] Failed to update header for HEIGHT\n",
   //          date_str(buf));
-  
-  //herror = fheaders->update("LATITUDE", "+37:59:35.30",
+
+  // herror = fheaders->update("LATITUDE", "+37:59:35.30",
   //                 "Telescope latitude dd:mm:ss");
-  //if (herror < 0)
+  // if (herror < 0)
   //  fprintf(stderr, "[WRNNG][%s] Failed to update header for LATITUDE\n",
   //          date_str(buf));
-  
-  //herror = fheaders->update("LONGITUD", "022:12:32.50",
+
+  // herror = fheaders->update("LONGITUD", "022:12:32.50",
   //                 "Telescope longitude dd:mm:ss");
-  //if (herror < 0)
+  // if (herror < 0)
   //  fprintf(stderr, "[WRNNG][%s] Failed to update header for LONGITUDE\n",
   //          date_str(buf));
-  
+
   // compute the start time correction for the headers
   auto start_time_cor = start_time_correction(actual_exposure, vsspeed, hsspeed,
                                               ynumpixels, xnumpixels);

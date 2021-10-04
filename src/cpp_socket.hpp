@@ -247,7 +247,7 @@ public:
   }
 
   int close_socket() noexcept { return m_socket.socket_close(); }
-  
+
   auto sockid() noexcept { return m_socket.sockid(); }
 
 private:

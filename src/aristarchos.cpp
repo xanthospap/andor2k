@@ -1,14 +1,14 @@
 #include "aristarchos.hpp"
 #include "andor2k.hpp"
-#include "cpp_socket.hpp"
 #include "cbase64.hpp"
+#include "cpp_socket.hpp"
 #include <bzlib.h>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <thread>
-#include <cstdint>
 
 using andor2k::ClientSocket;
 using andor2k::Socket;
@@ -23,11 +23,11 @@ static_assert(sizeof(unsigned int) == 4);
 struct AristrachosCommand {
   // the actual command, e.g. "0006RE ON;"
   char command[64];
-  // wait for reply (0-> do not wat, 1->wait, 2->optional wait, aka wait with 
+  // wait for reply (0-> do not wat, 1->wait, 2->optional wait, aka wait with
   // timeout)
-  int8_t  wait_reply=0;
+  int8_t wait_reply = 0;
   // sleep after the command is sent (before getting the reply if any)
-  int8_t  sleep_after=0;
+  int8_t sleep_after = 0;
 };
 
 bool response_has_error(const char *response) noexcept {
@@ -43,10 +43,11 @@ bool response_has_error(const char *response) noexcept {
 ///            response it gets back as successeful.
 /// @param[in] header FCC reply will be stored in the header buffer, which
 ///            should be at least ARISTARCHOS_MAX_HEADER_SIZE
-/// @param[in] reply_timeout If any of the command to be sent included waiting 
-///            for an optional reply, this is the value of the timeout in 
+/// @param[in] reply_timeout If any of the command to be sent included waiting
+///            for an optional reply, this is the value of the timeout in
 ///            seconds
-char *send_request_header_sequence(int max_tries, char *header, int reply_timeout) noexcept {
+char *send_request_header_sequence(int max_tries, char *header,
+                                   int reply_timeout) noexcept {
   char dbuf[32]; // for reporting datetime
 
   AristrachosCommand cmd_sequence[4];
@@ -65,165 +66,217 @@ char *send_request_header_sequence(int max_tries, char *header, int reply_timeou
 
   int count = 0; // current communication try
   int error = 1; // communication error
-  
+
   // open socket and exchange messages
   while (count < max_tries && error) {
-    
+
     error = 0;
-    
+
     try {
       ++count;
-      
+
       // open a client socket to communicate with FCC
       ClientSocket client_socket(ARISTARCHOS_IP, ARISTARCHOS_PORT);
-      
+
       // set the socket to be non-blocking, set time-out
       struct timeval tv;
       tv.tv_sec = reply_timeout;
       tv.tv_usec = 0;
-      setsockopt(client_socket.sockid(), SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-      
-      printf("[DEBUG][%s] Connection to FCC at %s:%d!\n", date_str(dbuf), ARISTARCHOS_IP, ARISTARCHOS_PORT);
+      setsockopt(client_socket.sockid(), SOL_SOCKET, SO_RCVTIMEO,
+                 (const char *)&tv, sizeof tv);
+
+      printf("[DEBUG][%s] Connection to FCC at %s:%d!\n", date_str(dbuf),
+             ARISTARCHOS_IP, ARISTARCHOS_PORT);
 
       // sending/receiving commands/replies via the header buffer
       for (int i = 0; i < 4; i++) {
-        
+
         // send command
         std::strcpy(header, cmd_sequence[i].command);
         int bt_sent = client_socket.send(header);
-        
+
         // if sending fails, close socket and retry (if allowed)
         if (bt_sent <= 0) {
           fprintf(stderr,
-                  "[ERROR][%s] Failed to transmit message to FCC! Try: %d/%d, message: [%s] (traceback: %s)\n",
+                  "[ERROR][%s] Failed to transmit message to FCC! Try: %d/%d, "
+                  "message: [%s] (traceback: %s)\n",
                   date_str(dbuf), count, max_tries, header, __func__);
-          fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", dbuf, __func__);
+          fprintf(stderr,
+                  "[ERROR][%s] Aborting connection and starting over! "
+                  "(traceback: %s)\n",
+                  dbuf, __func__);
           error = 1;
           client_socket.close_socket();
           break;
         } else {
-          printf("[DEBUG][%s] Command sent to server [%s]\n", date_str(dbuf), header);
+          printf("[DEBUG][%s] Command sent to server [%s]\n", date_str(dbuf),
+                 header);
         }
 
         // sleep if needed before getting reply
-        std::this_thread::sleep_for(std::chrono::seconds(cmd_sequence[i].sleep_after));
-        
-        // if we need a reply, get it (remmber, we have a time-out for 
+        std::this_thread::sleep_for(
+            std::chrono::seconds(cmd_sequence[i].sleep_after));
+
+        // if we need a reply, get it (remmber, we have a time-out for
         // responses)
         if (cmd_sequence[i].wait_reply) {
 
           int timeout_set = 0; // timeout set while waiting for reply
-          
+
           // get reply
           std::memset(header, '\0', ARISTARCHOS_MAX_HEADER_SIZE);
           int bt_recv = client_socket.recv(header, ARISTARCHOS_MAX_HEADER_SIZE);
-          
+
           if (bt_recv <= 0) {
             // check for timeout ...
-            if (errno==EAGAIN || errno==EWOULDBLOCK) {
-              fprintf(
-                  stderr,
-                  "[ERROR][%s] Failed to get answer from server, timeout reached!; request was: [%s] (traceback: %s)\n",
-                  date_str(dbuf), cmd_sequence[i].command, __func__);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+              fprintf(stderr,
+                      "[ERROR][%s] Failed to get answer from server, timeout "
+                      "reached!; request was: [%s] (traceback: %s)\n",
+                      date_str(dbuf), cmd_sequence[i].command, __func__);
               errno = 0;
               timeout_set = 1;
             } else {
-              fprintf(
-                  stderr,
-                  "[ERROR][%s] Failed to get answer from server; request was: [%s] (traceback: %s)\n",
-                  date_str(dbuf), cmd_sequence[i].command, __func__);
+              fprintf(stderr,
+                      "[ERROR][%s] Failed to get answer from server; request "
+                      "was: [%s] (traceback: %s)\n",
+                      date_str(dbuf), cmd_sequence[i].command, __func__);
             }
             // only an error if the reply is absolutelly needed
             if (timeout_set && cmd_sequence[i].wait_reply > 1) {
-              printf("[DEBUG][%s] Time-out while wating for reply but going on; reply not demanded!\n", date_str(dbuf));
+              printf("[DEBUG][%s] Time-out while wating for reply but going "
+                     "on; reply not demanded!\n",
+                     date_str(dbuf));
             } else {
-              fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", date_str(dbuf), __func__);
+              fprintf(stderr,
+                      "[ERROR][%s] Aborting connection and starting over! "
+                      "(traceback: %s)\n",
+                      date_str(dbuf), __func__);
               error = 1;
               client_socket.close_socket();
               break;
             }
-          // we got back a response
+            // we got back a response
           } else {
             printf("[DEBUG][%s] Here is the server response (%dbytes) [%s]\n",
-                date_str(dbuf), bt_recv, header);
+                   date_str(dbuf), bt_recv, header);
             if (response_has_error(header)) {
               fprintf(stderr,
-                  "[ERROR][%s] Seems like the response signaled an error! (traceback: %s)\n",
-                  date_str(dbuf), __func__);
-              fprintf(stderr, "[ERROR][%s] Aborting connection and starting over! (traceback: %s)\n", dbuf, __func__);
+                      "[ERROR][%s] Seems like the response signaled an error! "
+                      "(traceback: %s)\n",
+                      date_str(dbuf), __func__);
+              fprintf(stderr,
+                      "[ERROR][%s] Aborting connection and starting over! "
+                      "(traceback: %s)\n",
+                      dbuf, __func__);
               error = 1;
               client_socket.close_socket();
               break;
             }
           }
 
-        // no reply needed, continue with next command
+          // no reply needed, continue with next command
         } else {
-          printf("[DEBUG][%s] No reply needed, continuing ...\n", date_str(dbuf));
-        }// end reply handling for current command
+          printf("[DEBUG][%s] No reply needed, continuing ...\n",
+                 date_str(dbuf));
+        } // end reply handling for current command
 
       } // sent all commands, got all replies (for current try) ...
       client_socket.close_socket();
 
     } catch (std::exception &e) {
-      fprintf(stderr, "[ERROR][%s] Failed to open client socket for FCC at %s:%d (traceback: %s)\n", date_str(dbuf), ARISTARCHOS_IP, ARISTARCHOS_PORT, __func__);
+      fprintf(stderr,
+              "[ERROR][%s] Failed to open client socket for FCC at %s:%d "
+              "(traceback: %s)\n",
+              date_str(dbuf), ARISTARCHOS_IP, ARISTARCHOS_PORT, __func__);
     }
 
     // sleep a bita before re-trying .... do i need this?
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
-  if (error) return nullptr;
+  if (error)
+    return nullptr;
   return header;
 }
 
 int get_aristarchos_headers(int num_tries,
                             std::vector<FitsHeader> &headers) noexcept {
-  char buf[32]; // for datetime reporting
+  char buf[32];  // for datetime reporting
   int error = 1; // error
 
   // clear everything from headers vector
   if (!headers.empty())
     headers.clear();
 
-  printf("[DEBUG][%s] Trying to get Aristarchos headers\n", date_str(buf));
+  char raw_msg[ARISTARCHOS_MAX_HEADER_SIZE];
+  char ascii_buf[BZ2_BUFFER_SIZE];
+  int ctry = 0;              // current try for headers
+  char *ascii_str = nullptr; // header ascii string
+  unsigned ascii_len;        // size of resulting, ascii header buffer
 
   // try to get a header buffer from FCC
-  char raw_msg[ARISTARCHOS_MAX_HEADER_SIZE];
-  std::memset(raw_msg, 0, ARISTARCHOS_MAX_HEADER_SIZE);
-  char *raw_msg_p = send_request_header_sequence(num_tries, raw_msg, 2);
-  
-  // did we get anything back?
-  if (raw_msg_p == nullptr) {
-    fprintf(
-        stderr,
-        "[ERROR][%s] Failed getting headers from FCC@%s:%d (traceback: %s)\n",
-        date_str(buf), ARISTARCHOS_IP, ARISTARCHOS_PORT, __func__);
-    return 1;
-  }
+  while (ctry < num_tries && error) {
+    ++ctry;
+    printf("[DEBUG][%s] Trying to get Aristarchos headers (try %d/%d)\n",
+           date_str(buf), ctry, num_tries);
 
-  // we got something back! Could be the bziped, ubase64 encoded headers, 
-  // but we need to turn the buffer to ascii to check this
-  printf("[DEBUG][%s] Got headers from FCC; now trying to decode them\n",
-         date_str(buf));
+    // start off with no errors
+    error = 0;
 
-  // decode/decompress the reponse and store result in the ascii_buf buffer.
-  // the size of the (resulting) ascii string (hopefully the headers with no
-  // line breaks) is ascii_len
-  char ascii_buf[BZ2_BUFFER_SIZE];
-  unsigned ascii_len; // size of resulting, ascii header buffer
-  char *ascii_str = decode_message(raw_msg_p, ascii_buf, BZ2_BUFFER_SIZE, ascii_len);
-  if (ascii_str == nullptr) {
-    fprintf(stderr, "[ERROR][%s] Failed decoding/decompressing headers (traceback: %s)\n", date_str(buf),  __func__);
+    // send header request (opne socket to FCC and send request command
+    // sequence). If we do get something back, check if it can be resolved to
+    // a valid header string
+    std::memset(raw_msg, 0, ARISTARCHOS_MAX_HEADER_SIZE);
+    char *raw_msg_p = send_request_header_sequence(num_tries, raw_msg, 2);
+
+    // did we get anything back?
+    if (raw_msg_p == nullptr) {
+      fprintf(stderr,
+              "[ERROR][%s] Failed getting headers from FCC@%s:%d try %d/%d "
+              "(traceback: %s)\n",
+              date_str(buf), ARISTARCHOS_IP, ARISTARCHOS_PORT, ctry, num_tries,
+              __func__);
+      error = 1;
+      continue;
+    }
+
+    // we got something back! Could be the bziped, ubase64 encoded headers,
+    // but we need to turn the buffer to ascii to check this
+    printf("[DEBUG][%s] Got headers from FCC; now trying to decode them\n",
+           date_str(buf));
+
+    // decode/decompress the reponse and store result in the ascii_buf buffer.
+    // the size of the (resulting) ascii string (hopefully the headers with no
+    // line breaks) is ascii_len
+    ascii_str =
+        decode_message(raw_msg_p, ascii_buf, BZ2_BUFFER_SIZE, ascii_len);
+    if (ascii_str == nullptr) {
+      fprintf(stderr,
+              "[ERROR][%s] Failed decoding/decompressing headers, try %d/%d "
+              "(traceback: %s)\n",
+              date_str(buf), ctry, num_tries, __func__);
+      error = 1;
+      continue;
+    }
+  } // keep trying for FCC headers ...
+
+  // we either got the headers, in which case error==0, or we didn't, in which
+  // case error==1
+  if (error) {
+    fprintf(stderr,
+            "[ERROR][%s] Failed getting header buffer from FCC! Maximum number "
+            "of tries (%d) reached (traceback: %s)\n",
+            date_str(buf), num_tries, __func__);
     return 1;
   }
 
   // if we decoded the headers, extract them to a vector. Note that the
-  // decoded, ascii buffer (ascii_buf) holds the headers as a aingle string, 
+  // decoded, ascii buffer (ascii_buf) holds the headers as a aingle string,
   // aka with no newline characters!
-  printf("[DEBUG][%s] Splitting decoded headers to match FITS headers\n",
+  printf("[DEBUG][%s] Splitting decoded headers to match FITS header format\n",
          date_str(buf));
-  error = decoded_str_to_header(ascii_str, ascii_len-1, headers);
+  error = decoded_str_to_header(ascii_str, ascii_len - 1, headers);
   if (error) {
     fprintf(stderr,
             "[ERROR][%s] Failed to translate decoded headers to FITS "
@@ -235,6 +288,7 @@ int get_aristarchos_headers(int num_tries,
   // All done! return success
   printf("[DEBUG][%s] Actual number of headers decoded is :%d\n", date_str(buf),
          (int)headers.size());
+
   return error;
 }
 
@@ -255,7 +309,7 @@ int get_aristarchos_headers(int num_tries,
 /// @param[in] delim character to add
 /// @return A pointer to the dest string
 char *add_char_every(const char *source, char *dest, int every,
-    char delim) noexcept {
+                     char delim) noexcept {
   int str_length = std::strlen(source);
   int add_nr = str_length / every + (str_length % every != 0);
   char *at = dest;
@@ -263,8 +317,7 @@ char *add_char_every(const char *source, char *dest, int every,
   for (int i = 0; i < add_nr; i++) {
     int from = every * i;
     std::strncpy(at, source + from, every);
-    chars_added =
-      (i + 1) * every < str_length ? every : str_length - i * every;
+    chars_added = (i + 1) * every < str_length ? every : str_length - i * every;
     at += chars_added;
     *at = delim;
     ++at;
@@ -281,24 +334,25 @@ char *add_char_every(const char *source, char *dest, int every,
 /// @param[in] raw_message The encypted/compressed message to decode
 /// @param[in] ascii_str The resulting plain ascii string is stored in this
 ///            buffer
-/// @param[in] buff_len Size of the ascii_str buffer (needed by the 
+/// @param[in] buff_len Size of the ascii_str buffer (needed by the
 ///            decompression function)
 /// @param[out] ascii_len actuall length of the resulting, ascii string
-char *decode_message(char *raw_message, char *ascii_str, int buff_len, unsigned& ascii_len) noexcept {
+char *decode_message(char *raw_message, char *ascii_str, int buff_len,
+                     unsigned &ascii_len) noexcept {
 
   char buf[32]; // for datetime string
 
   printf("[DEBUG][%s] Started decoding message got from Aristarchos "
-      "(traceback: %s)\n",
-      date_str(buf), __func__);
+         "(traceback: %s)\n",
+         date_str(buf), __func__);
 
   // Find the start of the block. This is usually BF=[B64....];
   char *start = std::strstr(raw_message, "BF=");
   if (!start) {
     fprintf(stderr,
-        "[ERROR][%s] Failed to decode message; could not find start of "
-        "block \"B64\" (traceback: %s)\n",
-        date_str(buf), __func__);
+            "[ERROR][%s] Failed to decode message; could not find start of "
+            "block \"B64\" (traceback: %s)\n",
+            date_str(buf), __func__);
     return nullptr;
   }
   start += 3;
@@ -306,29 +360,31 @@ char *decode_message(char *raw_message, char *ascii_str, int buff_len, unsigned&
   // find the end of the essage, which should be the ';' character, and
   // replace it with a null-terminating character
   char *end = start;
-  while (*end && *end!=';') ++end;
+  while (*end && *end != ';')
+    ++end;
   if (*end != ';') {
-    fprintf(stderr,
+    fprintf(
+        stderr,
         "[ERROR][%s] Failed to decode message; could not find end of message "
         "aka \";\" (traceback: %s)\n",
         date_str(buf), __func__);
     return nullptr;
   }
   *end = '\0';
-  
-  // compute the length of the base64-decoded string and allocate a buffer to 
+
+  // compute the length of the base64-decoded string and allocate a buffer to
   // hold the result (the decrypted message)
   int len = base64decode_len(start);
   char *ub64_buf = new char[len];
   std::memset(ub64_buf, 0, len);
-  
+
   // decrypt ...
   int bts = base64decode(ub64_buf, start);
-  if (bts != len-1) {
+  if (bts != len - 1) {
     fprintf(stderr,
-        "[ERROR][%s] Failed to decode message; base64 decoding failed! "
-        "(traceback: %s)\n",
-        date_str(buf), __func__);
+            "[ERROR][%s] Failed to decode message; base64 decoding failed! "
+            "(traceback: %s)\n",
+            date_str(buf), __func__);
     delete[] ub64_buf;
     return nullptr;
   }
@@ -340,72 +396,73 @@ char *decode_message(char *raw_message, char *ascii_str, int buff_len, unsigned&
   // output string; before the call, it should hold the size of the input
   // buffer)
   ascii_len = buff_len;
-  int error = BZ2_bzBuffToBuffDecompress(ascii_str, &ascii_len, ub64_buf, bts, 1, 1);
+  int error =
+      BZ2_bzBuffToBuffDecompress(ascii_str, &ascii_len, ub64_buf, bts, 1, 1);
   if (error != BZ_OK) { // report error details and return
     fprintf(stderr, "ERROR Failed to decompress data (bz2)!\n");
     switch (error) {
-      case BZ_CONFIG_ERROR:
-        fprintf(stderr,
-            "[ERROR][%s] decompression error: bzlib library has been "
-            "mis-compiled! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_PARAM_ERROR:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: dest is NULL or destLen is "
-            "NULL! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_MEM_ERROR:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: insufficient memory is "
-            "available! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_OUTBUFF_FULL:
-        fprintf(stderr,
-            "[ERROR][%s] the size of the compressed data exceeds *destLen! "
-            "(traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_DATA_ERROR:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: a data integrity error was "
-            "detected in the compressed data! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_DATA_ERROR_MAGIC:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: the compressed data doesn't "
-            "begin with the right magic bytes! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      case BZ_UNEXPECTED_EOF:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: the compressed data ends "
-            "unexpectedly! (traceback: %s)\n",
-            date_str(buf), __func__);
-        break;
-      default:
-        fprintf(stderr,
-            "[ERROR][%s] descompression error: undocumented error! (traceback: "
-            "%s)\n",
-            date_str(buf), __func__);
+    case BZ_CONFIG_ERROR:
+      fprintf(stderr,
+              "[ERROR][%s] decompression error: bzlib library has been "
+              "mis-compiled! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_PARAM_ERROR:
+      fprintf(stderr,
+              "[ERROR][%s] descompression error: dest is NULL or destLen is "
+              "NULL! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_MEM_ERROR:
+      fprintf(stderr,
+              "[ERROR][%s] descompression error: insufficient memory is "
+              "available! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_OUTBUFF_FULL:
+      fprintf(stderr,
+              "[ERROR][%s] the size of the compressed data exceeds *destLen! "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_DATA_ERROR:
+      fprintf(stderr,
+              "[ERROR][%s] descompression error: a data integrity error was "
+              "detected in the compressed data! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_DATA_ERROR_MAGIC:
+      fprintf(stderr,
+              "[ERROR][%s] descompression error: the compressed data doesn't "
+              "begin with the right magic bytes! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    case BZ_UNEXPECTED_EOF:
+      fprintf(stderr,
+              "[ERROR][%s] descompression error: the compressed data ends "
+              "unexpectedly! (traceback: %s)\n",
+              date_str(buf), __func__);
+      break;
+    default:
+      fprintf(
+          stderr,
+          "[ERROR][%s] descompression error: undocumented error! (traceback: "
+          "%s)\n",
+          date_str(buf), __func__);
     }
 
     delete[] ub64_buf;
     return nullptr;
   }
- 
-  // clear memory for the decrypted message 
+
+  // clear memory for the decrypted message
   delete[] ub64_buf;
 
   // return
   return ascii_str;
 }
 
-
-/// @brief Given a plain FITS header buffer (ascii string with no newlines), 
+/// @brief Given a plain FITS header buffer (ascii string with no newlines),
 /// parse it to valid FitsHeader instances
 /// Note that the function assumes:
 /// 1. Each header line has a size of 80 characters
@@ -436,19 +493,11 @@ int decoded_str_to_header(const char *decoded_msg, unsigned msg_len,
   const char *end;
   while (*start && (!error && hdr_count < max_hdrs)) {
 
-    /*end = std::strchr(start, '\n');
-    if (end == nullptr) {
-      printf("[ERROR][%s] Cannont find next newline character! remaining "
-             "string is [%s] (traceback: %s)\n",
-             date_str(buf), start, __func__);
-      error = 1;
-      break;
-    }*/
     if (start - decoded_msg > msg_len) {
 #ifdef DEBUG
       printf("[DEBUG][%s] Parsing ended after %d characters "
-           "(traceback: %s)\n",
-           date_str(buf), (int)(start - decoded_msg), __func__);
+             "(traceback: %s)\n",
+             date_str(buf), (int)(start - decoded_msg), __func__);
 #endif
       break;
     }
@@ -458,7 +507,7 @@ int decoded_str_to_header(const char *decoded_msg, unsigned msg_len,
 #ifdef DEBUG
     printf("[DEBUG][%s] Parsing new header line: [%.*s] of size: %d "
            "(traceback: %s)\n",
-           date_str(buf), header_size-1, start, header_size-1, __func__);
+           date_str(buf), header_size - 1, start, header_size - 1, __func__);
 #endif
 
     bool is_header_line = true;
@@ -496,9 +545,11 @@ int decoded_str_to_header(const char *decoded_msg, unsigned msg_len,
       std::memset(hdr.comment, '\0', FITS_HEADER_COMMENT_CHARS);
       std::strncpy(hdr.comment, vstop + 1, remainder_sz);
 
+#ifdef DEBUG
       printf("[DEBUG][%s] Resolved Aristarchos header line: \n\tkey:[%s]"
              "\n\tvalue:[%s]\n\tcomment:[%s]\n",
              date_str(buf), hdr.key, hdr.cval, hdr.comment);
+#endif
 
       // push back the new resolved header
       header_vec.emplace_back(hdr);

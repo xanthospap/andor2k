@@ -21,10 +21,11 @@ constexpr int ARISTARCHOS_MAX_HEADER_SIZE = 4096;
 /// @todo is this too large?
 // constexpr unsigned int ARISTARCHOS_DECODE_BUFFER_SIZE = 1024 * 1024;
 
-int decoded_str_to_header(const char *decoded_msg, unsigned msg_len, 
+int decoded_str_to_header(const char *decoded_msg, unsigned msg_len,
                           std::vector<FitsHeader> &header_vec) noexcept;
 
-char *decode_message(char *raw_message, char *ascii_str, int buff_len, unsigned& ascii_len) noexcept;
+char *decode_message(char *raw_message, char *ascii_str, int buff_len,
+                     unsigned &ascii_len) noexcept;
 
 int get_aristarchos_headers(int num_tries,
                             std::vector<FitsHeader> &headers) noexcept;
