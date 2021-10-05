@@ -183,7 +183,8 @@ int resolve_command(const char *command, const Socket &socket,
   } else if (!(std::strncmp(command, "shutdown", 8))) {
     return -100;
   } else if (!(std::strncmp(command, "status", 6))) {
-    return print_status();
+    // report here and also send to client
+    return print_status(socket);
   } else if (!(std::strncmp(command, "setparam", 8))) {
     return set_param_value(command, params);
   } else if (!(std::strncmp(command, "image", 5))) {
@@ -200,11 +201,15 @@ int resolve_command(const char *command, const Socket &socket,
 }
 
 void chat(const Socket &socket, AndorParameters &params) {
+  int bytes_r;
+
   for (;;) {
 
     // read message from client into buffer
     std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
-    socket.recv(buffer, 1024);
+    bytes_r = socket.recv(buffer, 1024);
+
+    if (bytes_r < 1) return;
 
     // perform the operation requested by client
     int answr = resolve_command(buffer, socket, params);

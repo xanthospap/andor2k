@@ -16,6 +16,7 @@ void abort_listener(int port_no) noexcept {
 
   char buf[64];
   int sock_status;
+  abort_set = 0;
 
   // do not lock yet!
   std::unique_lock<std::mutex> lk(g_mtx_abort, std::defer_lock);
@@ -48,7 +49,7 @@ void abort_listener(int port_no) noexcept {
 
     printf(">> socket request accepted! someone is talking!\n");
 
-    while (true) {
+    //while (true) {
       std::memset(buf, 0, 64);
       int bytes = child_socket.recv(buf, 64);
 
@@ -59,9 +60,12 @@ void abort_listener(int port_no) noexcept {
       }
 
       // we have received something! interpreting as abort signal
+      printf(">> abort signal caught from client!\n");
       abort_set = 1;
+      unsigned int error = CancelWait();
+      printf(">> CancelWait() returned %d (success?%d)\n", error, error==DRV_SUCCESS);
       return;
-    }
+    //}
 
   } catch (std::exception& e) {
     printf(">>> closing abort thread/socket\n");

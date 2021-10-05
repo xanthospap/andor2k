@@ -48,7 +48,7 @@ char *get_status_string(char *buffer) noexcept {
 
   switch (status) {
   case DRV_IDLE:
-    std::strcpy(buffer, "IDLE; waiting for instructions");
+    std::strcpy(buffer, "IDLE, waiting for instructions");
     break;
   case DRV_TEMPCYCLE:
     std::strcpy(buffer, "Executing temperature cycle");
@@ -151,6 +151,43 @@ char *get_start_acquisition_status_string(unsigned int error,
     break;
   case DRV_SPOOLSETUPERROR:
     std::strcpy(buffer, "Error with spool settings");
+    break;
+  default:
+    std::strcpy(buffer, "unknown/undocumented acquisition state!");
+    break;
+  }
+  return buffer;
+}
+
+char *get_get_temperature_string(unsigned error,
+                                          char *buffer) noexcept {
+
+  std::memset(buffer, 0, MAX_STATUS_STRING_SIZE);
+
+  switch (error) {
+  case DRV_NOT_INITIALIZED:
+    std::strcpy(buffer, "System not initialized!");
+    break;
+  case DRV_ACQUIRING:
+    std::strcpy(buffer, "Acquisition in progress");
+    break;
+  case DRV_ERROR_ACK:
+    std::strcpy(buffer, "Unable to communicate with card");
+    break;
+  case DRV_TEMP_OFF:
+    std::strcpy(buffer, "Temperature is off");
+    break;
+  case DRV_TEMP_NOT_REACHED:
+   std::strcpy(buffer, "Temperature has not reached set point");
+    break;
+  case DRV_TEMP_DRIFT:
+     std::strcpy(buffer, "Temperature had stabilised but has since drifted");
+    break;
+  case DRV_TEMP_NOT_STABILIZED:
+    std::strcpy(buffer, "Temperature reached but not stabilized");
+    break;
+  case DRV_TEMP_STABILIZED:
+    std::strcpy(buffer, "Temperature has stabilized at set point");
     break;
   default:
     std::strcpy(buffer, "unknown/undocumented acquisition state!");

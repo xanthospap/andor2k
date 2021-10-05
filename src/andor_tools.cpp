@@ -1,5 +1,6 @@
 #include "andor2k.hpp"
 #include "atmcdLXd.h"
+#include "cpp_socket.hpp"
 #include <cstdio>
 #include <ctime>
 
@@ -15,100 +16,34 @@ const char *date_str(char *buf) noexcept {
   return buf;
 }
 
-int print_status() noexcept {
-  char buf[32] = {'\0'}; /* buffer for datetime string */
-  int status;
-
-  /* get status */
-  if (GetStatus(&status) != DRV_SUCCESS) {
-    fprintf(stderr,
-            "[ERROR][%s] Failed to get camera status! (traceback: %s)\n",
-            date_str(buf), __func__);
-    return 1;
-  }
-
-  /* report status */
+int print_status(const andor2k::Socket& sock) noexcept {
+  char buf[32] = {'\0'}; // buffer for datetime string
+  char descr[MAX_STATUS_STRING_SIZE];
+  char sockbuf[MAX_SOCKET_BUFFER_SIZE];
+  int cbytes;
+  
+  // get and report status
   printf("[DEBUG][%s] Status report for ANDOR2K:\n", date_str(buf));
+  printf("[DEBUG][%s] %s\n", buf, get_status_string(descr));
 
-  date_str(buf);
-  switch (status) {
-  case DRV_IDLE:
-    printf("[DEBUG][%s] IDLE; waiting for instructions\n", buf);
-    break;
-  case DRV_TEMPCYCLE:
-    printf("[DEBUG][%s] Executing temperature cycle\n", buf);
-    break;
-  case DRV_ACQUIRING:
-    printf("[DEBUG][%s] Acquisition in progress\n", buf);
-    break;
-  case DRV_ACCUM_TIME_NOT_MET:
-    printf("[DEBUG][%s] Unable to meet Accumulate cycle time\n", buf);
-    break;
-  case DRV_KINETIC_TIME_NOT_MET:
-    printf("[DEBUG][%s] Unable to meet Kinetic cycle time\n", buf);
-    break;
-  case DRV_ERROR_ACK:
-    printf("[DEBUG][%s] Unable to communicate with card\n", buf);
-    break;
-  case DRV_ACQ_BUFFER:
-    printf("[DEBUG][%s] Computer unable to read the data via the ISA slot at "
-           "the required rate\n",
-           buf);
-    break;
-  case DRV_ACQ_DOWNFIFO_FULL:
-    printf("[DEBUG][%s] Computer unable to read data fast enough to stop "
-           "camera memory going full\n",
-           buf);
-    break;
-  case DRV_SPOOLERROR:
-    printf("[DEBUG][%s] Overflow of the spool buffer\n", buf);
-    break;
-  }
+  cbytes = sprintf(sockbuf, "status:%s;", descr);
 
-  /* get and report temperature */
+  // get and report temperature
   unsigned int error;
   int ctemp;
   date_str(buf);
   error = GetTemperature(&ctemp);
-  switch (error) {
-  case DRV_NOT_INITIALIZED:
-    fprintf(stderr, "[DEBUG][%s] Temp: %+4dC: System not initialized!\n", buf,
-            ctemp);
-    return 1;
-  case DRV_ACQUIRING:
-    fprintf(stderr, "[DEBUG][%s] Temp: %+4dC: Acquisition in progress\n", buf,
-            ctemp);
-    return 2;
-  case DRV_ERROR_ACK:
-    fprintf(stderr,
-            "[DEBUG][%s] Temp: %+4dC: Unable to communicate with card\n", buf,
-            ctemp);
-    return 3;
-  case DRV_TEMP_OFF:
-    printf("[DEBUG][%s] Temp: %+4dC: Temperature is off\n", buf, ctemp);
-    break;
-  case DRV_TEMP_NOT_REACHED:
-    printf("[DEBUG][%s] Temp: %+4dC: Temperature has not reached set point\n",
-           buf, ctemp);
-    break;
-  case DRV_TEMP_DRIFT:
-    printf("[DEBUG][%s] Temp: %+4dC: Temperature had stabilised but has since "
-           "drifted\n",
-           buf, ctemp);
-    break;
-  case DRV_TEMP_NOT_STABILIZED:
-    printf("[DEBUG][%s] Temp: %+4dC: Temperature reached but not stabilized\n",
-           buf, ctemp);
-    break;
-  case DRV_TEMP_STABILIZED:
-    printf(
-        "[DEBUG][%s] Temp: %+4dC: Temperature has stabilized at set point.\n",
-        buf, ctemp);
-    break;
-  }
-
-  /* report end of status */
+  printf("[DEBUG][%s] Temp: %+4dC: %s\n", buf, ctemp, get_get_temperature_string(error, descr));
+  cbytes += sprintf(sockbuf+cbytes, "temp:%+4d (%s);", ctemp, descr);
+  
+  // report end of status
   printf("[DEBUG][%s] End of status report for ANDOR2K:\n", date_str(buf));
+
+  sprintf(sockbuf+cbytes, "time:%s;", date_str(buf));
+  if (sock.send(sockbuf)<1)
+    printf("[ERROR][%s] Failed to send status report to client (socket fd %d)\n", date_str(buf), sock.sockid());
+  else
+    printf("[DEBUG][%s] Sent status report to client: [%s] (socket fd %d)\n", date_str(buf), sockbuf, sock.sockid());
 
   return 0;
 }

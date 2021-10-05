@@ -99,7 +99,9 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     rs_lambda, AcquisitionReporter(&socket, millisec_per_image, total_millisec,
                               1, params->num_images_, acq_start_t));
   
-  // wait for the acquisition ...
+  // wait for the acquisition ... (note that the already active abort-
+  // listening socket, may receive an abort request while waiting (in which
+  // case, abort_set should be positive)
   int status = WaitForAcquisition();
   if (status != DRV_SUCCESS) { // error while waiting for acquisition to end...
     fprintf(stderr,
@@ -107,12 +109,28 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             "acquisition! Aborting (traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
+    
     // allow reporter to end and join with main, and
     // kill abort listening socket and join corresponding thread
     g_mtx.unlock();
     shutdown(abort_socket_fd, 2);
     report_t.join();
     abort_t.join();
+    
+    // report the error (maybe an abort requested by client)
+    if (abort_set) {
+      fprintf(stderr,
+              "[ERROR][%s] Abort requested by client while waiting for a new "
+              "acquisition! Aborting (traceback: %s)\n",
+              date_str(buf), __func__);
+      socket_sprintf(socket, sockbuf,
+                     "done;status:unfinished (abort called by user);error:%d",
+                     status);
+    } else {
+      socket_sprintf(socket, sockbuf,
+                     "done;status:failed/error while waiting acquisition;error:%d",
+                     status);
+    }
     return 1;
   }
 

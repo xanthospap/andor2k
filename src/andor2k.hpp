@@ -146,7 +146,7 @@ int select_camera(int camera_index = 0) noexcept;
 
 int system_shutdown() noexcept;
 
-int print_status() noexcept;
+int print_status(const andor2k::Socket& socket) noexcept;
 
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
@@ -169,4 +169,5 @@ char *get_status_string(char *buf) noexcept;
 char *get_start_acquisition_status_string(unsigned int error,
                                           char *buffer) noexcept;
 char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept;
+char *get_get_temperature_string(unsigned int error, char *buffer) noexcept;
 #endif
