@@ -186,7 +186,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             "(traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
-    socket_sprintf(socket, sockbuf, "done;error:1;status:error;error:%d", 1);
+    socket_sprintf(socket, sockbuf, "done;status:error saving FITS file;error:%d", 1);
     return 1;
   }
 
@@ -220,8 +220,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   // auto ful_stop_at = std::chrono::high_resolution_clock::now();
   socket_sprintf(socket, sockbuf,
-                 "done;error:0;info:FITS %s;status:image saving done;info:image %d/%d", fits_filename, 0,
-                 1);
+                 "done;error:0;info:FITS %s;status:image saving done;", fits_filename);
   /*
   printf("--> Timing Details <--\n");
   printf("\tExposure duration         %.3f millisec\n",
