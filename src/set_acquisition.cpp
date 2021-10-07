@@ -122,6 +122,11 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
 
+
+  // set the trigger mode to internal; this is default but still recommended
+  // by the ANDOR guys
+  SetTriggerMode(0);
+
   // try to get/decode Aristarchos headers if requested 
   // TODO that could be done in another thread to save us some time!
   if (params->ar_hdr_tries_ > 0) {

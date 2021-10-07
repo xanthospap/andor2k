@@ -170,4 +170,5 @@ char *get_start_acquisition_status_string(unsigned int error,
                                           char *buffer) noexcept;
 char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept;
 char *get_get_temperature_string(unsigned int error, char *buffer) noexcept;
+char *get_get_images_string(unsigned int error, char *buffer) noexcept;
 #endif

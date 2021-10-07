@@ -52,7 +52,7 @@ pkginclude_HEADERS = \
         aristarchos.hpp \
 	get_exposure.hpp \
 	acquisition_reporter.hpp \
-	abort_listener.hpp \
+	acquisition_series_reporter.hpp \
 	cbase64.hpp
 
 ##
@@ -81,4 +81,8 @@ dist_libhelmosandor2k_la_SOURCES = \
     socket_sprintf.cpp \
     cbase64.cpp \
     get_ntp_time.cpp \
-    get_single_scan.cpp
+	acquisition_reporter.cpp \
+	acquisition_series_reporter.cpp \
+    get_single_scan.cpp \
+    get_rta_scan.cpp \
+	abort_listener.cpp

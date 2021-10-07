@@ -3,7 +3,6 @@
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
 #include "acquisition_reporter.hpp"
-#include "abort_listener.hpp"
 #include <chrono>
 #include <cppfits.hpp>
 #include <cstdarg>
@@ -54,16 +53,20 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   lk.unlock();
   // ok, we are listening on port SOCKET_PORT+1 for abort, with the open socket 
   // having an fd=abort_socket_fd
+  
+  // lets get the actual exposure time, so that we know exaclty
+  float exposure, accumulate, kinetic;
+  GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
 
-  long millisec_per_image, total_millisec;
-  if (coarse_exposure_time(params, millisec_per_image, total_millisec)) {
-    fprintf(stderr,
-            "[ERROR][%s] Failed to compute coarse timings for acquisition! "
-            "(traceback %s)\n",
-            date_str(buf), __func__);
-    millisec_per_image = static_cast<long>(params->exposure_ * 1e3);
-    total_millisec = params->num_images_ * millisec_per_image;
-  }
+  //long millisec_per_image, total_millisec;
+  //if (coarse_exposure_time(params, millisec_per_image, total_millisec)) {
+  //  fprintf(stderr,
+  //          "[ERROR][%s] Failed to compute coarse timings for acquisition! "
+  //          "(traceback %s)\n",
+  //          date_str(buf), __func__);
+  //  millisec_per_image = static_cast<long>(params->exposure_ * 1e3);
+  //  total_millisec = params->num_images_ * millisec_per_image;
+  //}
 
   printf("[DEBUG][%s] Starting image acquisition ... with dimensions: %dx%d "
          "stored at %p\n",
@@ -74,13 +77,10 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   if (unsigned error = StartAcquisition(); error != DRV_SUCCESS) {
     // failed to start acquisition .... report error and send it to client
     char acq_str[MAX_STATUS_STRING_SIZE];
-    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is:\n",
-            date_str(buf));
-    fprintf(stderr, "[ERROR][%s] %s", date_str(buf),
-            get_start_acquisition_status_string(error, acq_str));
+    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is: %s (traceback: %s)\n",
+            date_str(buf), get_start_acquisition_status_string(error, acq_str), __func__);
     socket_sprintf(socket, sockbuf,
-                   "done;error:1;info:start acquisition error, image %d/%d", 1,
-                   1);
+                   "done;error:1;info:start acquisition error (%s);time:%s;", acq_str, buf);
     AbortAcquisition();
     // kill abort listening socket and join corresponding thread
     shutdown(abort_socket_fd, 2);
@@ -96,8 +96,8 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   // spawn off a new thread to report status while we are waiting for the 
   // acquisition to end
   std::thread report_t(
-    rs_lambda, AcquisitionReporter(&socket, millisec_per_image, total_millisec,
-                              1, params->num_images_, acq_start_t));
+    rs_lambda, AcquisitionReporter(&socket, (long)(exposure*1e3), 
+                              acq_start_t));
   
   // wait for the acquisition ... (note that the already active abort-
   // listening socket, may receive an abort request while waiting (in which
@@ -124,12 +124,12 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
               "acquisition! Aborting (traceback: %s)\n",
               date_str(buf), __func__);
       socket_sprintf(socket, sockbuf,
-                     "done;status:unfinished (abort called by user);error:%d",
-                     status);
+                     "done;status:unfinished (abort called by user);error:%d;time%s;",
+                     status, date_str(buf));
     } else {
       socket_sprintf(socket, sockbuf,
-                     "done;status:failed/error while waiting acquisition;error:%d",
-                     status);
+                     "done;status:failed/error while waiting acquisition;error:%d;time:%s;",
+                     status, date_str(buf));
     }
     return 1;
   }
@@ -160,24 +160,22 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   // check for errors while getting acquired data
   if (error != DRV_SUCCESS) {
     // report error
-    fprintf(stderr,
-            "[ERROR][%s] Failed to get acquired data! Aborting acquisition "
-            "(traceback: %s)\n",
-            date_str(buf), __func__);
     char errbuf[MAX_STATUS_STRING_SIZE];
     fprintf(stderr,
-      "[ERROR][%s] Details: %s (traceback: %s)\n", buf, get_get_acquired_data_status_string(error, errbuf), __func__);
+            "[ERROR][%s] Failed to get acquired data! Aborting acquisition, error: %s "
+            "(traceback: %s)\n",
+            date_str(buf), get_get_acquired_data_status_string(error, errbuf), __func__);
     // abort acquisition
     AbortAcquisition();
     // report to client that an error occured
     socket_sprintf(socket, sockbuf,
-                   "done;status:error (failed getting acquired data);error:%u",
-                   error);
+                   "done;status:error (failed getting acquired data, %s);error:%u;time:%s;", errbuf,
+                   error, buf);
     return 2;
   }
   
   // report to client that data is acquired
-  socket_sprintf(socket, sockbuf, "info:image data acquired;status:saving to FITS ...;image:1/1;");
+  socket_sprintf(socket, sockbuf, "info:image data acquired;status:saving to FITS ...;image:1/1;time:%s;", date_str(buf));
 
   // formulate a valid FITS filename to save the data to
   if (get_next_fits_filename(params, fits_filename)) {
@@ -220,25 +218,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   // auto ful_stop_at = std::chrono::high_resolution_clock::now();
   socket_sprintf(socket, sockbuf,
-                 "done;error:0;info:FITS %s;status:image saving done;", fits_filename);
-  /*
-  printf("--> Timing Details <--\n");
-  printf("\tExposure duration         %.3f millisec\n",
-         std::chrono::duration<double, std::milli>(exp_stop_at - exp_start_at)
-             .count());
-  printf("\tAcquisition duration      %.3f millisec\n",
-         std::chrono::duration<double, std::milli>(acq_stop_at - exp_stop_at)
-             .count());
-  printf("\tExposure plus acquisition %.3f millisec\n",
-         std::chrono::duration<double, std::milli>(acq_stop_at - exp_start_at)
-             .count());
-  printf("\tFits manipulation         %.3f millisec\n",
-         std::chrono::duration<double, std::milli>(ful_stop_at - acq_stop_at)
-             .count());
-  printf("\tFull acquisition          %.3f millisec\n",
-         std::chrono::duration<double, std::milli>(ful_stop_at - exp_start_at)
-             .count());
-  */
+                 "done;error:0;info:FITS %s;status:image saving done;time:%s;", fits_filename, date_str(buf));
 
   return 0;
 }

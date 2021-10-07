@@ -8,6 +8,7 @@ int sig_interrupt_set = 0;
 int abort_exposure_set = 0;
 int stop_reporting_thread = 0;
 int acquisition_thread_finished = 0;
+int cur_img_in_series = 0;
 
 std::mutex g_mtx;
 std::mutex g_mtx_abort;
@@ -151,6 +152,39 @@ char *get_start_acquisition_status_string(unsigned int error,
     break;
   case DRV_SPOOLSETUPERROR:
     std::strcpy(buffer, "Error with spool settings");
+    break;
+  default:
+    std::strcpy(buffer, "unknown/undocumented acquisition state!");
+    break;
+  }
+  return buffer;
+}
+
+char *get_get_images_string(unsigned error, char *buffer) noexcept {
+
+  std::memset(buffer, 0, MAX_STATUS_STRING_SIZE);
+
+  switch (error) {
+  case DRV_SUCCESS:
+    std::strcpy(buffer, "GetImages succeded");
+    break;
+  case DRV_NOT_INITIALIZED:
+    std::strcpy(buffer, "System not initialized!");
+    break;
+  case DRV_ERROR_ACK:
+    std::strcpy(buffer, "Unable to communicate with card");
+    break;
+  case DRV_GENERAL_ERRORS:
+    std::strcpy(buffer, "The series is out of range");
+    break;
+  case DRV_P3INVALID:
+    std::strcpy(buffer, "Invalid pointer");
+    break;
+  case DRV_P4INVALID:
+    std::strcpy(buffer, "Array size incorrect");
+    break;
+  case DRV_NO_NEW_DATA:
+    std::strcpy(buffer, "There is no new data yet");
     break;
   default:
     std::strcpy(buffer, "unknown/undocumented acquisition state!");

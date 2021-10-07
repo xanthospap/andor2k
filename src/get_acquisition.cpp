@@ -24,9 +24,9 @@ extern int acquisition_thread_finished;
 /*int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
                     int xpixels, int ypixels, at_32 *img_buffer,
                     const Socket &socket) noexcept;*/
-int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
+/*int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
                  int xpixels, int ypixels, at_32 *img_buffer,
-                 const Socket &socket) noexcept;
+                 const Socket &socket) noexcept;*/
 int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
                      int xpixels, int ypixels, at_32 *img_buffer,
                      const Socket &socket) noexcept;
@@ -255,7 +255,7 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
     int cur_image = lAcquired + 1;
     stop_reporting_thread = false;
     std::thread rthread(report_lambda,
-                        ThreadReporter(&socket, /*400L,*/ millisec_per_image,
+                        ThreadReporter(&socket, millisec_per_image,
                                        total_millisec, cur_image,
                                        params->num_images_, series_start));
     printf("--> new thread created, %d/%d ... <---\n", cur_image,
@@ -377,7 +377,7 @@ int get_kinetic_scan(const AndorParameters *params, FitsHeaders *fheaders,
 /// @note before each (new) acquisition, we are checking the
 /// sig_kill_acquisition (extern) variable; if set to true, we are going to
 /// abort and return a negative integer.
-int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
+/*int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
                  int xpixels, int ypixels, at_32 *img_buffer,
                  const Socket &socket) noexcept {
 
@@ -520,7 +520,7 @@ int get_rta_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   AbortAcquisition();
   return 0;
-}
+}*/
 
 /// @brief Get/Save a single scan acquisitionto FITS format
 /// The function will perform the following:
