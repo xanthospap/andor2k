@@ -19,10 +19,6 @@ using andor2k::ServerSocket;
 using andor2k::Socket;
 using namespace std::chrono_literals;
 
-// ANDOR2K RELATED CONSTANTS
-constexpr int ANDOR_MIN_TEMP = -120;
-constexpr int ANDOR_MAX_TEMP = 10;
-
 // Global constants for abort/interrupt
 extern int sig_abort_set;
 extern int sig_interrupt_set;
@@ -58,9 +54,14 @@ void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
 ///            terminated). The command should be a c-string of type:
 ///            "settemp [ITEMP]" where ITEMP is an integer denoting the
 ///            temperature to be reached by the ANDOR2K camera
-int set_temperature(const char *command) noexcept {
-  if (std::strncmp(command, "settemp", 7))
+int set_temperature(const char *command, const Socket &socket) noexcept {
+  errno = 0;
+  char buffer[MAX_SOCKET_BUFFER_SIZE];
+  if (std::strncmp(command, "settemp", 7)) {
+    socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
+  }
+  
   // we expect that after the temperatues, we have a valid int
   char *end;
   int target_temp = std::strtol(command + 7, &end, 10);
@@ -71,18 +72,22 @@ int set_temperature(const char *command) noexcept {
         "[ERROR][%s] Failed to resolve target temperature in command \"%s\"\n",
         date_str(now_str), command);
     fprintf(stderr, "[ERROR][%s] Skippig command \"%s\"\n", now_str, command);
+    socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
   }
+  
   if (target_temp < ANDOR_MIN_TEMP || target_temp > ANDOR_MAX_TEMP) {
     fprintf(stderr,
             "[ERROR][%s] Refusing to set temperature outside limits: [%+3d, "
             "%+3d]\n",
             date_str(now_str), ANDOR_MIN_TEMP, ANDOR_MAX_TEMP);
     fprintf(stderr, "[ERROR][%s] Skippig command \"%s\"\n", now_str, command);
+    socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
   }
+  
   // command seems ok .... do it!
-  return cool_to_temperature(target_temp);
+  return cool_to_temperature(target_temp, &socket);
 }
 
 int get_image(const char *command, const Socket &socket,
@@ -179,7 +184,7 @@ int set_param_value(const char *command, AndorParameters &params) noexcept {
 int resolve_command(const char *command, const Socket &socket,
                     AndorParameters &params) noexcept {
   if (!(std::strncmp(command, "settemp", 7))) {
-    return set_temperature(command);
+    return set_temperature(command, socket);
   } else if (!(std::strncmp(command, "shutdown", 8))) {
     return -100;
   } else if (!(std::strncmp(command, "status", 6))) {

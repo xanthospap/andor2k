@@ -7,6 +7,10 @@
 #include <cstdint>
 #include <limits>
 
+// ANDOR2K RELATED CONSTANTS
+constexpr int ANDOR_MIN_TEMP = -120;
+constexpr int ANDOR_MAX_TEMP = 10;
+
 // @brief Max chars for any fits filename (excluding path)
 constexpr int MAX_FITS_FILENAME_SIZE = 128;
 
@@ -25,7 +29,7 @@ constexpr int MAX_OBJECT_NAME_CHARS = 32;
 constexpr int MAX_FILTER_NAME_CHARS = 16;
 
 /// @brief Minimum temperature to reach before shut down
-constexpr int SHUTDOWN_TEMPERATURE = 2;
+constexpr int SHUTDOWN_TEMPERATURE = 5;
 
 /// @brief Max minutes to wait for when shuting down camera (to reach shutdown
 ///        temperature).
@@ -33,7 +37,7 @@ constexpr int MAX_SHUTDOWN_DURATION = 30;
 
 /// @brief Max minutes to wait for when cooling down camera (to reach given
 ///        temperature).
-constexpr int MAX_COOLING_DURATION = 30;
+constexpr int MAX_COOLING_DURATION = 45;
 
 /// @brief Max pixels in width/height
 constexpr int MAX_PIXELS_IN_DIM = 2048;
@@ -140,7 +144,7 @@ int setup_acquisition_mode(const AndorParameters *) noexcept;
 int resolve_cmd_parameters(int argc, char *argv[],
                            AndorParameters &params) noexcept;
 
-int cool_to_temperature(int temp_in_celsius) noexcept;
+int cool_to_temperature(int temp_in_celsius, const andor2k::Socket* reporting_socket=nullptr) noexcept;
 
 int select_camera(int camera_index = 0) noexcept;
 
