@@ -77,11 +77,20 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
     return 10;
   }
 
-  // initialize shutter
-  unsigned int error =
+  // initialize shutter. Note that if we are taking a dark image, the shutter
+  // should be closed!
+  unsigned serror;
+  if (!std::strncmp(params->type_, "dark", 4)) {
+#ifdef DEBUG
+    printf(">> WARNING dark image to be taken; setting shutter mode to closed!\n");
+#endif
+    serror = SetShutter(1, ShutterMode2int(ShutterMode::PermanentlyClosed), params->shutter_closing_time_, params->shutter_opening_time_);
+  } else {
+    serror =
       SetShutter(1, ShutterMode2int(params->shutter_mode_),
                  params->shutter_closing_time_, params->shutter_opening_time_);
-  if (error != DRV_SUCCESS) {
+  }
+  if (serror != DRV_SUCCESS) {
     fprintf(stderr,
             "[ERROR][%s] Failed to initialize shutter! (traceback: %s)\n",
             date_str(buf), __func__);
@@ -136,14 +145,17 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
               "[ERROR][%s] Failed to fetch/decode Aristarchos headers "
               "(traceback: %s)\n",
               date_str(buf), __func__);
-      return 2;
+      // return 2;
+      // do not stop if fetching headers fails!
     }
+    if (ar_headers.size()) {
     if (fheaders->merge(ar_headers, true) < 0) {
       fprintf(stderr,
               "[ERROR][%s] Failed merging Aristarchos headers to the previous "
               "set! (traceback: %s)\n",
               date_str(buf), __func__);
       return 2;
+    }
     }
   }
 

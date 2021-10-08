@@ -40,6 +40,10 @@
 int resolve_image_parameters(const char *command,
                              AndorParameters &params) noexcept {
 
+#ifdef DEBUG
+  printf(">> Resolving command: [%s]\n", command);
+#endif
+
   // first string should be "image"
   if (std::strncmp(command, "image", 5))
     return 1;
@@ -314,7 +318,7 @@ int resolve_image_parameters(const char *command,
         return 1;
       }
       params.exposure_ = std::strtod(token, &end);
-      if (end == token || !(params.exposure_ > 0e0)) {
+      if (end == token || !(params.exposure_ >= 0e0)) {
         fprintf(
             stderr,
             "[ERROR][%s] Failed to convert parameter \"%s\" to a (valid) float "

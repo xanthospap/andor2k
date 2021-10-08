@@ -196,7 +196,7 @@ int cool_to_temperature(int tempC, const andor2k::Socket *socket) noexcept {
                        1, current_temp, elt);
       return 1;
     } else {
-      printf("[DEBUG][%s] Elpased time while cooling %3ld minutes\n",
+      printf("[DEBUG][%s] Elapsed time while cooling %3ld minutes\n",
              date_str(buf), elt);
     }
 

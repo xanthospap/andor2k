@@ -56,6 +56,17 @@ void AcquisitionReporter::report() noexcept {
 
   // get a lock instance but do not try to lock yet!
   std::unique_lock<std::mutex> lk(g_mtx, std::defer_lock);
+  
+  if (!exposure_ms) {
+#ifdef DEBUG
+    printf(">> image is bias! not using locks!\n");
+#endif
+    date_str(mbuf + len_const_prt);
+    std::sprintf(mbuf + std::strlen(mbuf),
+                 "done;progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f", 100,
+                 100, 0e0, 0e0);
+    return;
+  }
 
   // report while we can't get a hold of the lock
   long from_thread_start = 0; // , from_acquisition_start=0;

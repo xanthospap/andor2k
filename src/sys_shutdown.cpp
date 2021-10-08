@@ -105,7 +105,7 @@ int system_shutdown() noexcept {
 
   /* wait untill we reach shutdown temperature */
   if (current_temp < SHUTDOWN_TEMPERATURE) {
-    printf("[DEBUG][%s] Wating for camera to reach SHUTDOWN_TEMPERATURE ...\n",
+    printf("[DEBUG][%s] Waiting for camera to reach SHUTDOWN_TEMPERATURE ...\n",
            date_str(buf));
     auto start_time = std::chrono::high_resolution_clock::now();
     bool keep_warming = true;
