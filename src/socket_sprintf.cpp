@@ -1,6 +1,6 @@
 #include "andor2kd.hpp"
-#include <cstring>
 #include <cstdarg>
+#include <cstring>
 
 int socket_sprintf(const andor2k::Socket &socket, char *buffer, const char *fmt,
                    ...) noexcept {

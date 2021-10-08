@@ -1,7 +1,7 @@
 #include "andor2k.hpp"
+#include <condition_variable>
 #include <cstring>
 #include <mutex>
-#include <condition_variable>
 
 int sig_abort_set = 0;
 int sig_interrupt_set = 0;
@@ -84,34 +84,35 @@ char *get_status_string(char *buffer) noexcept {
   return buffer;
 }
 
-char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept {
+char *get_get_acquired_data_status_string(unsigned int error,
+                                          char *buffer) noexcept {
 
   std::memset(buffer, 0, MAX_STATUS_STRING_SIZE);
-    
-    switch (error) {
-    case DRV_SUCCESS:
-      std::strcpy(buffer, "Data acquired successefully");
-      break;
-    case DRV_ACQUIRING:
-      strcpy(buffer, "Acquisition in progress");
-      break;
-    case DRV_ERROR_ACK:
-      strcpy(buffer, "Unable to communicate with card");
-      break;
-    case DRV_P1INVALID:
-      strcpy(buffer, "Invalid pointer");
-      break;
-    case DRV_P2INVALID:
-      strcpy(buffer, "Array size is incorrect");
-      break;
-    case DRV_NO_NEW_DATA:
-      strcpy(buffer, "No acquisition has taken place");
-      break;
-    default:
-      strcpy(buffer, "Undocumented error");
-    }
 
-    return buffer;
+  switch (error) {
+  case DRV_SUCCESS:
+    std::strcpy(buffer, "Data acquired successefully");
+    break;
+  case DRV_ACQUIRING:
+    strcpy(buffer, "Acquisition in progress");
+    break;
+  case DRV_ERROR_ACK:
+    strcpy(buffer, "Unable to communicate with card");
+    break;
+  case DRV_P1INVALID:
+    strcpy(buffer, "Invalid pointer");
+    break;
+  case DRV_P2INVALID:
+    strcpy(buffer, "Array size is incorrect");
+    break;
+  case DRV_NO_NEW_DATA:
+    strcpy(buffer, "No acquisition has taken place");
+    break;
+  default:
+    strcpy(buffer, "Undocumented error");
+  }
+
+  return buffer;
 }
 
 char *get_start_acquisition_status_string(unsigned int error,
@@ -193,8 +194,7 @@ char *get_get_images_string(unsigned error, char *buffer) noexcept {
   return buffer;
 }
 
-char *get_get_temperature_string(unsigned error,
-                                          char *buffer) noexcept {
+char *get_get_temperature_string(unsigned error, char *buffer) noexcept {
 
   std::memset(buffer, 0, MAX_STATUS_STRING_SIZE);
 
@@ -212,10 +212,10 @@ char *get_get_temperature_string(unsigned error,
     std::strcpy(buffer, "Temperature is off");
     break;
   case DRV_TEMP_NOT_REACHED:
-   std::strcpy(buffer, "Temperature has not reached set point");
+    std::strcpy(buffer, "Temperature has not reached set point");
     break;
   case DRV_TEMP_DRIFT:
-     std::strcpy(buffer, "Temperature had stabilised but has since drifted");
+    std::strcpy(buffer, "Temperature had stabilised but has since drifted");
     break;
   case DRV_TEMP_NOT_STABILIZED:
     std::strcpy(buffer, "Temperature reached but not stabilized");

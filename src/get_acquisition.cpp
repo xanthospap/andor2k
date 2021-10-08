@@ -3,13 +3,13 @@
 #include "andor_time_utils.hpp"
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
+#include "get_exposure.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cppfits.hpp>
 #include <cstdio>
 #include <cstring>
 #include <thread>
-#include "get_exposure.hpp"
 
 using andor2k::Socket;
 using namespace std::chrono_literals;
@@ -44,7 +44,6 @@ int find_start_time_cor(const FitsHeaders *fheaders,
   return 1;
 }
 
-
 int exposure2tick_every(long iexp) noexcept {
   long min_tick = static_cast<long>(0.5e0 * 1e3);
   long max_tick = static_cast<long>(5 * 1e3);
@@ -69,7 +68,6 @@ int exposure2tick_every(long iexp) noexcept {
     return iexp / nr;
   }
 }
-
 
 class ThreadReporter {
 public:
@@ -126,7 +124,6 @@ private:
 
   void clear_buf() noexcept { std::memset(mbuf, 0, MAX_SOCKET_BUFFER_SIZE); }
 };
-
 
 void wait_for_acquisition(int &status) noexcept {
   acquisition_thread_finished = false;
@@ -613,7 +610,7 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 //#endif
 //    stop_reporting = true;
 //    rthread.join();
-//  
+//
 //  if (WaitForAcquisition() != DRV_SUCCESS) {
 //    fprintf(stderr,
 //            "[ERROR][%s] Something happened while waiting for a new "

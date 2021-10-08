@@ -122,12 +122,11 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   printf("[DEBUG][%s] Detector pixels = %5dx%5d\n", date_str(buf), xpixels,
          ypixels);
 
-
   // set the trigger mode to internal; this is default but still recommended
   // by the ANDOR guys
   SetTriggerMode(0);
 
-  // try to get/decode Aristarchos headers if requested 
+  // try to get/decode Aristarchos headers if requested
   // TODO that could be done in another thread to save us some time!
   if (params->ar_hdr_tries_ > 0) {
     std::vector<FitsHeader> ar_headers;
@@ -254,9 +253,9 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   // compute the start time correction for the headers
   auto start_time_cor = start_time_correction(actual_exposure, vsspeed, hsspeed,
                                               ynumpixels, xnumpixels);
-  herror = fheaders->update<long>(
-      "TIMECORR", start_time_cor.count(),
-      "Timming correction already applied (nanosec)");
+  herror =
+      fheaders->update<long>("TIMECORR", start_time_cor.count(),
+                             "Timming correction already applied (nanosec)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for TIMECORR\n",
             date_str(buf));

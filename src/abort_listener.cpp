@@ -1,9 +1,9 @@
-#include "cpp_socket.hpp"
 #include "andor2k.hpp"
 #include "andor2kd.hpp"
+#include "cpp_socket.hpp"
+#include <condition_variable>
 #include <cstring>
 #include <mutex>
-#include <condition_variable>
 
 using andor2k::Socket;
 
@@ -32,13 +32,14 @@ void abort_listener(int port_no) noexcept {
     // we should unlock
     andor2k::ServerSocket server_sock(port_no);
     printf(">> opened socket at port %d to listen for abort ...\n", port_no);
-    
+
     // set the abort_socket_fd to the newly created socket's fd, so that other
-    // fuctions can close it. Notify the other threads that we have created the 
+    // fuctions can close it. Notify the other threads that we have created the
     abort_socket_fd = server_sock.sockid();
     lk.unlock();
     cv.notify_one();
-    printf(">> abort_socket_fd set, can now close socket outside thread (%d)\n", server_sock.sockid());
+    printf(">> abort_socket_fd set, can now close socket outside thread (%d)\n",
+           server_sock.sockid());
 
     // creating hearing child socket (if anyone wants to ever connect ...)
     andor2k::Socket child_socket = server_sock.accept(sock_status);
@@ -49,25 +50,26 @@ void abort_listener(int port_no) noexcept {
 
     printf(">> socket request accepted! someone is talking!\n");
 
-    //while (true) {
-      std::memset(buf, 0, 64);
-      int bytes = child_socket.recv(buf, 64);
+    // while (true) {
+    std::memset(buf, 0, 64);
+    int bytes = child_socket.recv(buf, 64);
 
-      // client closed connection
-      if (bytes <= 0) {
-        printf(">> closing abort thread/socket connection\n");
-        return; 
-      }
-
-      // we have received something! interpreting as abort signal
-      printf(">> abort signal caught from client!\n");
-      abort_set = 1;
-      unsigned int error = CancelWait();
-      printf(">> CancelWait() returned %d (success?%d)\n", error, error==DRV_SUCCESS);
+    // client closed connection
+    if (bytes <= 0) {
+      printf(">> closing abort thread/socket connection\n");
       return;
+    }
+
+    // we have received something! interpreting as abort signal
+    printf(">> abort signal caught from client!\n");
+    abort_set = 1;
+    unsigned int error = CancelWait();
+    printf(">> CancelWait() returned %d (success?%d)\n", error,
+           error == DRV_SUCCESS);
+    return;
     //}
 
-  } catch (std::exception& e) {
+  } catch (std::exception &e) {
     printf(">>> closing abort thread/socket\n");
     if (!lk.owns_lock())
       lk.lock();

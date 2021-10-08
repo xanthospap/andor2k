@@ -1,16 +1,16 @@
+#include "acquisition_reporter.hpp"
 #include "andor2k.hpp"
 #include "andor_time_utils.hpp"
 #include "atmcdLXd.h"
 #include "fits_header.hpp"
-#include "acquisition_reporter.hpp"
 #include <chrono>
+#include <condition_variable>
 #include <cppfits.hpp>
 #include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <thread>
-#include <condition_variable>
 
 using andor2k::Socket;
 
@@ -46,20 +46,20 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   // first off, let's create an abort signal listener thread/socket. spawn off
   // the thread and wait till we are notified that we have the socket's fd
   abort_socket_fd = -100;
-  std::thread abort_t(abort_listener, SOCKET_PORT+1);
+  std::thread abort_t(abort_listener, SOCKET_PORT + 1);
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
   std::unique_lock<std::mutex> lk(g_mtx_abort);
-  cv.wait(lk, []{return abort_socket_fd;});
+  cv.wait(lk, [] { return abort_socket_fd; });
   lk.unlock();
-  // ok, we are listening on port SOCKET_PORT+1 for abort, with the open socket 
+  // ok, we are listening on port SOCKET_PORT+1 for abort, with the open socket
   // having an fd=abort_socket_fd
-  
+
   // lets get the actual exposure time, so that we know exaclty
   float exposure, accumulate, kinetic;
   GetAcquisitionTimings(&exposure, &accumulate, &kinetic);
 
-  //long millisec_per_image, total_millisec;
-  //if (coarse_exposure_time(params, millisec_per_image, total_millisec)) {
+  // long millisec_per_image, total_millisec;
+  // if (coarse_exposure_time(params, millisec_per_image, total_millisec)) {
   //  fprintf(stderr,
   //          "[ERROR][%s] Failed to compute coarse timings for acquisition! "
   //          "(traceback %s)\n",
@@ -77,28 +77,32 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
   if (unsigned error = StartAcquisition(); error != DRV_SUCCESS) {
     // failed to start acquisition .... report error and send it to client
     char acq_str[MAX_STATUS_STRING_SIZE];
-    fprintf(stderr, "[ERROR][%s] Failed to start acquisition; error is: %s (traceback: %s)\n",
-            date_str(buf), get_start_acquisition_status_string(error, acq_str), __func__);
+    fprintf(stderr,
+            "[ERROR][%s] Failed to start acquisition; error is: %s (traceback: "
+            "%s)\n",
+            date_str(buf), get_start_acquisition_status_string(error, acq_str),
+            __func__);
     socket_sprintf(socket, sockbuf,
-                   "done;error:1;info:start acquisition error (%s);time:%s;", acq_str, buf);
+                   "done;error:1;info:start acquisition error (%s);time:%s;",
+                   acq_str, buf);
     AbortAcquisition();
     // kill abort listening socket and join corresponding thread
     shutdown(abort_socket_fd, 2);
     abort_t.join();
     return 1;
   }
-  
+
   // IMPORTANT!!
-  // get the global lock -- only release it when we are done with the 
+  // get the global lock -- only release it when we are done with the
   // acquisition
   g_mtx.lock();
 
-  // spawn off a new thread to report status while we are waiting for the 
+  // spawn off a new thread to report status while we are waiting for the
   // acquisition to end
   std::thread report_t(
-    rs_lambda, AcquisitionReporter(&socket, (long)(exposure*1e3), 
-                              acq_start_t));
-  
+      rs_lambda,
+      AcquisitionReporter(&socket, (long)(exposure * 1e3), acq_start_t));
+
   // wait for the acquisition ... (note that the already active abort-
   // listening socket, may receive an abort request while waiting (in which
   // case, abort_set should be positive)
@@ -109,26 +113,28 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
             "acquisition! Aborting (traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
-    
+
     // allow reporter to end and join with main, and
     // kill abort listening socket and join corresponding thread
     g_mtx.unlock();
     shutdown(abort_socket_fd, 2);
     report_t.join();
     abort_t.join();
-    
+
     // report the error (maybe an abort requested by client)
     if (abort_set) {
       fprintf(stderr,
               "[ERROR][%s] Abort requested by client while waiting for a new "
               "acquisition! Aborting (traceback: %s)\n",
               date_str(buf), __func__);
-      socket_sprintf(socket, sockbuf,
-                     "done;status:unfinished (abort called by user);error:%d;time%s;",
-                     status, date_str(buf));
+      socket_sprintf(
+          socket, sockbuf,
+          "done;status:unfinished (abort called by user);error:%d;time%s;",
+          status, date_str(buf));
     } else {
       socket_sprintf(socket, sockbuf,
-                     "done;status:failed/error while waiting acquisition;error:%d;time:%s;",
+                     "done;status:failed/error while waiting "
+                     "acquisition;error:%d;time:%s;",
                      status, date_str(buf));
     }
     return 1;
@@ -162,30 +168,41 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     // report error
     char errbuf[MAX_STATUS_STRING_SIZE];
     fprintf(stderr,
-            "[ERROR][%s] Failed to get acquired data! Aborting acquisition, error: %s "
+            "[ERROR][%s] Failed to get acquired data! Aborting acquisition, "
+            "error: %s "
             "(traceback: %s)\n",
-            date_str(buf), get_get_acquired_data_status_string(error, errbuf), __func__);
+            date_str(buf), get_get_acquired_data_status_string(error, errbuf),
+            __func__);
     // abort acquisition
     AbortAcquisition();
     // report to client that an error occured
     socket_sprintf(socket, sockbuf,
-                   "done;status:error (failed getting acquired data, %s);error:%u;time:%s;", errbuf,
-                   error, buf);
+                   "done;status:error (failed getting acquired data, "
+                   "%s);error:%u;time:%s;",
+                   errbuf, error, buf);
     return 2;
   }
-  
-  // report to client that data is acquired
-  socket_sprintf(socket, sockbuf, "info:image data acquired;status:saving to FITS ...;image:1/1;time:%s;", date_str(buf));
 
-  // formulate a valid FITS filename to save the data to
+  // report to client that data is acquired
+  socket_sprintf(
+      socket, sockbuf,
+      "info:image data acquired;status:saving to FITS ...;image:1/1;time:%s;",
+      date_str(buf));
+
+  // save image to FITS format
+  if (save_as_fits(params, fheaders, xpixels, ypixels, img_buffer, socket,
+                   fits_filename, sockbuf))
+    return 1;
+
+  /* formulate a valid FITS filename to save the data to
   if (get_next_fits_filename(params, fits_filename)) {
     fprintf(stderr,
             "[ERROR][%s] Failed getting FITS filename! No FITS image saved "
             "(traceback: %s)\n",
             date_str(buf), __func__);
     AbortAcquisition();
-    socket_sprintf(socket, sockbuf, "done;status:error saving FITS file;error:%d", 1);
-    return 1;
+    socket_sprintf(socket, sockbuf, "done;status:error saving FITS
+  file;error:%d", 1); return 1;
   }
 
   printf("[DEBUG][%s] Image acquired; saving to FITS file \"%s\" ...\n",
@@ -197,12 +214,11 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
     fprintf(stderr,
             "[ERROR][%s] Failed writting data to FITS file (traceback: %s)!\n",
             date_str(buf), __func__);
-    socket_sprintf(socket, sockbuf, "done;error:1;status:error while saving to FITS;error:%d", 15);
-    return 15;
-  } else {
-    printf("[DEBUG][%s] Image written in FITS file %s\n", date_str(buf),
-           fits_filename);
-    socket_sprintf(socket, sockbuf, "info:image saved to FITS;status:FITS file created %s", fits_filename);
+    socket_sprintf(socket, sockbuf, "done;error:1;status:error while saving to
+  FITS;error:%d", 15); return 15; } else { printf("[DEBUG][%s] Image written in
+  FITS file %s\n", date_str(buf), fits_filename); socket_sprintf(socket,
+  sockbuf, "info:image saved to FITS;status:FITS file created %s",
+  fits_filename);
   }
 
   // apply headers to FITS file and close
@@ -215,10 +231,12 @@ int get_single_scan(const AndorParameters *params, FitsHeaders *fheaders,
 
   // close the (newly-created) FITS file
   fits.close();
+  */
 
   // auto ful_stop_at = std::chrono::high_resolution_clock::now();
   socket_sprintf(socket, sockbuf,
-                 "done;error:0;info:FITS %s;status:image saving done;time:%s;", fits_filename, date_str(buf));
+                 "done;error:0;info:FITS %s;status:image saving done;time:%s;",
+                 fits_filename, date_str(buf));
 
   return 0;
 }

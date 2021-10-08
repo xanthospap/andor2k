@@ -16,12 +16,12 @@ const char *date_str(char *buf) noexcept {
   return buf;
 }
 
-int print_status(const andor2k::Socket& sock) noexcept {
+int print_status(const andor2k::Socket &sock) noexcept {
   char buf[32] = {'\0'}; // buffer for datetime string
   char descr[MAX_STATUS_STRING_SIZE];
   char sockbuf[MAX_SOCKET_BUFFER_SIZE];
   int cbytes;
-  
+
   // get and report status
   printf("[DEBUG][%s] Status report for ANDOR2K:\n", date_str(buf));
   printf("[DEBUG][%s] %s\n", buf, get_status_string(descr));
@@ -33,17 +33,21 @@ int print_status(const andor2k::Socket& sock) noexcept {
   int ctemp;
   date_str(buf);
   error = GetTemperature(&ctemp);
-  printf("[DEBUG][%s] Temp: %+4dC: %s\n", buf, ctemp, get_get_temperature_string(error, descr));
-  cbytes += sprintf(sockbuf+cbytes, "temp:%+4d (%s);", ctemp, descr);
-  
+  printf("[DEBUG][%s] Temp: %+4dC: %s\n", buf, ctemp,
+         get_get_temperature_string(error, descr));
+  cbytes += sprintf(sockbuf + cbytes, "temp:%+4d (%s);", ctemp, descr);
+
   // report end of status
   printf("[DEBUG][%s] End of status report for ANDOR2K:\n", date_str(buf));
 
-  sprintf(sockbuf+cbytes, "time:%s;", date_str(buf));
-  if (sock.send(sockbuf)<1)
-    printf("[ERROR][%s] Failed to send status report to client (socket fd %d)\n", date_str(buf), sock.sockid());
+  sprintf(sockbuf + cbytes, "time:%s;", date_str(buf));
+  if (sock.send(sockbuf) < 1)
+    printf(
+        "[ERROR][%s] Failed to send status report to client (socket fd %d)\n",
+        date_str(buf), sock.sockid());
   else
-    printf("[DEBUG][%s] Sent status report to client: [%s] (socket fd %d)\n", date_str(buf), sockbuf, sock.sockid());
+    printf("[DEBUG][%s] Sent status report to client: [%s] (socket fd %d)\n",
+           date_str(buf), sockbuf, sock.sockid());
 
   return 0;
 }

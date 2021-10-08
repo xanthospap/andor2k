@@ -61,7 +61,7 @@ int set_temperature(const char *command, const Socket &socket) noexcept {
     socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
   }
-  
+
   // we expect that after the temperatues, we have a valid int
   char *end;
   int target_temp = std::strtol(command + 7, &end, 10);
@@ -75,7 +75,7 @@ int set_temperature(const char *command, const Socket &socket) noexcept {
     socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
   }
-  
+
   if (target_temp < ANDOR_MIN_TEMP || target_temp > ANDOR_MAX_TEMP) {
     fprintf(stderr,
             "[ERROR][%s] Refusing to set temperature outside limits: [%+3d, "
@@ -85,7 +85,7 @@ int set_temperature(const char *command, const Socket &socket) noexcept {
     socket_sprintf(socket, buffer, "done;error:1;status:Invalid command!");
     return 1;
   }
-  
+
   // command seems ok .... do it!
   return cool_to_temperature(target_temp, &socket);
 }
@@ -214,7 +214,8 @@ void chat(const Socket &socket, AndorParameters &params) {
     std::memset(buffer, 0, MAX_SOCKET_BUFFER_SIZE);
     bytes_r = socket.recv(buffer, 1024);
 
-    if (bytes_r < 1) return;
+    if (bytes_r < 1)
+      return;
 
     // perform the operation requested by client
     int answr = resolve_command(buffer, socket, params);

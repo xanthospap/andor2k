@@ -144,13 +144,15 @@ int setup_acquisition_mode(const AndorParameters *) noexcept;
 int resolve_cmd_parameters(int argc, char *argv[],
                            AndorParameters &params) noexcept;
 
-int cool_to_temperature(int temp_in_celsius, const andor2k::Socket* reporting_socket=nullptr) noexcept;
+int cool_to_temperature(
+    int temp_in_celsius,
+    const andor2k::Socket *reporting_socket = nullptr) noexcept;
 
 int select_camera(int camera_index = 0) noexcept;
 
 int system_shutdown() noexcept;
 
-int print_status(const andor2k::Socket& socket) noexcept;
+int print_status(const andor2k::Socket &socket) noexcept;
 
 int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
@@ -169,10 +171,16 @@ int coarse_exposure_time(const AndorParameters *params,
                          long &millisec_per_image,
                          long &total_millisec) noexcept;
 
+int save_as_fits(const AndorParameters *params, FitsHeaders *fheaders,
+                 int xpixels, int ypixels, at_32 *img_buffer,
+                 const andor2k::Socket &socket, char *fits_filename,
+                 char *socket_buffer) noexcept;
+
 char *get_status_string(char *buf) noexcept;
 char *get_start_acquisition_status_string(unsigned int error,
                                           char *buffer) noexcept;
-char *get_get_acquired_data_status_string(unsigned int error, char *buffer) noexcept;
+char *get_get_acquired_data_status_string(unsigned int error,
+                                          char *buffer) noexcept;
 char *get_get_temperature_string(unsigned int error, char *buffer) noexcept;
 char *get_get_images_string(unsigned int error, char *buffer) noexcept;
 #endif

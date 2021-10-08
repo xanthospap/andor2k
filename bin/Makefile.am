@@ -1,5 +1,4 @@
 bin_PROGRAMS = dandor2kd \
-	dandor2k_client \
 	testAndor
 
 MCXXFLAGS = \

@@ -85,4 +85,5 @@ dist_libhelmosandor2k_la_SOURCES = \
 	acquisition_series_reporter.cpp \
     get_single_scan.cpp \
     get_rta_scan.cpp \
-	abort_listener.cpp
+	abort_listener.cpp \
+	save_as_fits.cpp

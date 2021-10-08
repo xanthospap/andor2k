@@ -2,8 +2,8 @@
 #include <cstdio>
 
 int main() {
-  
-  //see https://www.ntppool.org/en/use.html
+
+  // see https://www.ntppool.org/en/use.html
   const char *ntp_server = "0.pool.ntp.org";
 
   std_time_point tp;
@@ -11,7 +11,8 @@ int main() {
 
   char buf[64];
   if (!error)
-    printf("NTP time got from server: %s\n", strfdt<DateTimeFormat::YMDHMfS>(tp, buf));
+    printf("NTP time got from server: %s\n",
+           strfdt<DateTimeFormat::YMDHMfS>(tp, buf));
 
   return error;
 }

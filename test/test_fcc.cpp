@@ -8,10 +8,10 @@
 #include <unistd.h>
 
 int main() {
-  
+
   std::vector<FitsHeader> headers;
-  
+
   int error = get_aristarchos_headers(3, headers);
-  
+
   return error;
 }
