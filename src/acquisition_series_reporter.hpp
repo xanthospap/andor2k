@@ -13,7 +13,7 @@ public:
 private:
   const andor2k::Socket *socket;
   long exposure_millisec;
-  std::chrono::system_clock::time_point series_start; // start of series
+  std::chrono::system_clock::time_point series_start_t; // start of series
   int num_images;
   long every_millisec;
   int len_const_prt;

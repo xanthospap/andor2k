@@ -15,61 +15,37 @@ using namespace std::chrono_literals;
 using andor2k::ClientSocket;
 
 void chat(const ClientSocket &socket) {
+  
   char buffer[1024];
   for (;;) {
+    
     ::bzero(buffer, sizeof(buffer));
     // get string from user
     printf("\nEnter the string: ");
     int n = 0;
     while ((buffer[n++] = getchar()) != '\n')
       ;
+    
     // send message to client
+    // remove the trailing newline; it hits me in the nerves!
+    buffer[--n] = '\0';
     socket.send(buffer);
+    
     // read message from server
     socket.recv(buffer, 1024);
     printf("\nGot string from server: \"%s\"", buffer);
+    
     // if message contains "exit" then exit chat
     if (std::strncmp("exit", buffer, 4) == 0) {
       printf("Client exit ...\n");
       break;
     }
   }
+  
   return;
 }
 
-int status_error = 0;
-void *getStatus(void *ptr) noexcept {
-  status_error = 0;
-  ptr = nullptr;
-  if (ptr)
-    printf("why is this not null?\n");
-
-  try {
-    ClientSocket status_socket("localhost", 8080 + 1);
-    printf("Created client status socket\n");
-
-    char buf[1024];
-    while (true) {
-      ::bzero(buf, sizeof(buf));
-      std::strcpy(buf, "status");
-      status_socket.send(buf);
-      ::bzero(buf, sizeof(buf));
-      status_socket.recv(buf, 1024);
-      printf("\nGot string from server: \"%s\"", buf);
-      std::this_thread::sleep_for(1200ms);
-    }
-
-  } catch (std::exception &e) {
-    fprintf(stderr, "[ERROR] Exception caught!\n");
-    status_error = 1;
-    return (void *)(&status_error);
-  }
-}
-
 int main() {
-  // pthread_t status_thread;
-  // int status_thread_error = pthread_create(&status_thread, NULL, getStatus,
-  // NULL);
 
   try {
     // create and connect ....
@@ -81,8 +57,7 @@ int main() {
     chat(client_socket);
 
   } catch (std::exception &e) {
-    fprintf(stderr, "[ERROR] Exception caught!\n");
-    // fprintf(stderr, "%s", e.what().c_str());
+    fprintf(stderr, "[ERROR] Exception caught/Closing socket (client)\n");
   }
 
   printf("All done!\n");
