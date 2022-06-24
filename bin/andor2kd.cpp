@@ -285,11 +285,10 @@ int main() {
   printf("... ok!\n");
 
   // cool down if needed RUN
-  /*
   if (cool_to_temperature(INTITIALIZE_TO_TEMP)) {
-      fprintf(stderr, "[FATAL][%s] Failed to set target
-  temperature...exiting\n", date_str()); return 10;
-  }*/
+      fprintf(stderr, "[FATAL][%s] Failed to set target temperature...exiting\n", date_str(now_str));
+      return 10;
+  }
 
   try {
     ServerSocket server_sock(SOCKET_PORT);
