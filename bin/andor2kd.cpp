@@ -205,9 +205,9 @@ int resolve_command(const char *command, const Socket &socket,
   }
 }
 
-void chat(const Socket &socket, AndorParameters &params) {
+int chat(const Socket &socket, AndorParameters &params) {
   int bytes_r;
-
+  
   for (;;) {
 
     // read message from client into buffer
@@ -215,7 +215,7 @@ void chat(const Socket &socket, AndorParameters &params) {
     bytes_r = socket.recv(buffer, 1024);
 
     if (bytes_r < 1)
-      return;
+      return 0;
 
     // perform the operation requested by client
     int answr = resolve_command(buffer, socket, params);
@@ -227,7 +227,7 @@ void chat(const Socket &socket, AndorParameters &params) {
     }
   }
 
-  return;
+  return -1;
 }
 
 int main() {
@@ -295,17 +295,20 @@ int main() {
     printf("[DEBUG][%s] Service is up and running ... waiting for input\n",
            date_str(now_str));
 
-    // creating hearing child socket
-    Socket child_socket = server_sock.accept(sock_status);
-    if (sock_status < 0) {
-      fprintf(stderr, "[FATAL][%s] Failed to create child socket ... exiting\n",
-              date_str(now_str));
-      return 1;
-    }
-    printf("[DEBUG][%s] Waiting for instructions ...\n", date_str(now_str));
+    int shutdown_received = 0;
+    while (shutdown_received>=0) {
+      // creating hearing child socket
+      Socket child_socket = server_sock.accept(sock_status);
+      if (sock_status < 0) {
+        fprintf(stderr, "[FATAL][%s] Failed to create child socket ... exiting\n",
+                date_str(now_str));
+        return 1;
+      }
+      printf("[DEBUG][%s] Waiting for instructions ...\n", date_str(now_str));
 
-    // communicate with client
-    chat(child_socket, params);
+      // communicate with client
+      shutdown_received = chat(child_socket, params);
+    }
 
   } catch (std::exception &e) {
     fprintf(stderr, "[ERROR][%s] Failed creating deamon\n", date_str(now_str));
