@@ -192,6 +192,12 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for VSSPEED\n",
             date_str(buf));
+  
+  herror = fheaders->update("OBSERVER", params->observer_name_,
+                            "Observer name/id");
+  if (herror < 0)
+    fprintf(stderr, "[WRNNG][%s] Failed to update header for OBSERVER\n",
+            date_str(buf));
 
   herror = fheaders->update<float>("EXPOSED", actual_exposure,
                                    "Requested exposure time (sec)");

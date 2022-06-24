@@ -28,6 +28,8 @@ constexpr int MAX_OBJECT_NAME_CHARS = 32;
 
 constexpr int MAX_FILTER_NAME_CHARS = 16;
 
+constexpr const int MAX_OBSERVER_NAME = 32;
+
 /// @brief Minimum temperature to reach before shut down
 constexpr int SHUTDOWN_TEMPERATURE = 5;
 
@@ -85,6 +87,7 @@ struct AndorParameters {
   char image_filename_[MAX_FITS_FILENAME_SIZE];
   char object_name_[MAX_OBJECT_NAME_CHARS];
   char filter_name_[MAX_FILTER_NAME_CHARS];
+  char observer_name_[MAX_OBSERVER_NAME] = "andor2k";
 
   /* options for read-out mode */
   ReadOutMode read_out_mode_{ReadOutMode::Image};

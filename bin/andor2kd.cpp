@@ -30,7 +30,7 @@ char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char buffer[MAX_SOCKET_BUFFER_SIZE];
 
-/// @brief Signal handler to kill daemon (calls shutdown() and then exits)
+/// Signal handler to kill daemon (calls shutdown() and then exits)
 void kill_daemon(int signal) noexcept {
   printf(
       "[DEBUG][%s] Caught signal (#%d); shutting down daemon (traceback: %s)\n",
@@ -39,7 +39,8 @@ void kill_daemon(int signal) noexcept {
   printf("[DEBUG][%s] Goodbye!\n", date_str(now_str));
   exit(signal);
 }
-/// @brief Signal handler for SEGFAULT (calls shutdown() and then exits)
+
+/// Signal handler for SEGFAULT (calls shutdown() and then exits)
 void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
   printf("[FATAL][%s] Caught segfault at address %p; shutting down daemon "
          "(traceback: %s)\n",
@@ -49,7 +50,7 @@ void segfault_sigaction(int signal, siginfo_t *si, void *arg) {
   exit(signal);
 }
 
-/// @brief Set ANDOR2K temperature via a command of type: "settemp [ITEMP]"
+/// Set ANDOR2K temperature via a command of type: "settemp [ITEMP]"
 /// @param[in] command A (char) buffer holding the command to be executed (null
 ///            terminated). The command should be a c-string of type:
 ///            "settemp [ITEMP]" where ITEMP is an integer denoting the
@@ -169,6 +170,9 @@ int set_param_value(const char *command, AndorParameters &params) noexcept {
       params.kinetics_cycle_time_ = fval;
       printf("[DEBUG][%s] Changing Kinetic Cycle Time to : %.3fsec!\n",
              date_str(now_str), fval);
+    } else if (!std::strncmp(token, "observername=", 13)) {
+      std::strcpy(params.observer_name_, token+13);
+      params.observer_name_[31] = '\0';
     } else {
       fprintf(stderr,
               "[WRNNG][%s] Skipping token in paramter set command: [%s]\n",
