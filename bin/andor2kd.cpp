@@ -25,7 +25,7 @@ extern int sig_interrupt_set;
 extern int abort_exposure_set;
 
 // buffers and constants for socket communication
-constexpr int INTITIALIZE_TO_TEMP = -50;
+constexpr int INTITIALIZE_TO_TEMP = -90;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char buffer[MAX_SOCKET_BUFFER_SIZE];
