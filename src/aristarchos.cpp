@@ -183,6 +183,8 @@ char *send_request_header_sequence(int max_tries, char *header,
 
       } // sent all commands, got all replies (for current try) ...
       client_socket.close_socket();
+      // fixme - set error to 0, to mark a successeful try
+      error = 0;
 
     } catch (std::exception &e) {
       fprintf(stderr,
