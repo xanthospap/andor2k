@@ -51,34 +51,6 @@ int cool_to_temperature(int tempC, const andor2k::Socket *socket) noexcept {
           *socket, sbuf,
           "done;error:%u;ctemp:%d;status:Failed to set target temperature!",
           status, current_temp);
-    // switch (status) {
-    // case DRV_NOT_INITIALIZED:
-    //  fprintf(stderr, " System is not initialized (traceback: %s)\n",
-    //  __func__); errstat = 1; break;
-    // case DRV_ACQUIRING:
-    //  fprintf(stderr, " Acquisition in progress (traceback: %s)\n", __func__);
-    //  errstat = 2;
-    //  break;
-    // case DRV_ERROR_ACK:
-    //  fprintf(stderr, " Unable to communicate with card (traceback: %s)\n",
-    //          __func__);
-    //  errstat = 3;
-    //  break;
-    // case DRV_P1INVALID:
-    //  fprintf(stderr, " Temperature invalid (traceback: %s)\n", __func__);
-    //  errstat = 4;
-    //  break;
-    // case DRV_NOT_SUPPORTED:
-    //  fprintf(stderr,
-    //          " The camera does not support setting this temperature "
-    //          "(traceback: %s)\n",
-    //          __func__);
-    //  errstat = 5;
-    //  break;
-    // default:
-    //  fprintf(stderr, " Undocumented error! (traceback: %s)\n", __func__);
-    //  errstat = std::numeric_limits<int>::max();
-    //}
     return 1;
   }
 
@@ -93,24 +65,6 @@ int cool_to_temperature(int tempC, const andor2k::Socket *socket) noexcept {
           *socket, sbuf,
           "done;error:%u;ctemp:%d;status:Failed to startup the cooler!", status,
           current_temp);
-    // switch (status) {
-    // case DRV_NOT_INITIALIZED:
-    //  fprintf(stderr, " System not initialized! (traceback: %s)\n", __func__);
-    //  errstat = 1;
-    //  break;
-    // case DRV_ACQUIRING:
-    //  fprintf(stderr, " Acquisition in progress (traceback: %s)\n", __func__);
-    //  errstat = 2;
-    //  break;
-    // case DRV_ERROR_ACK:
-    //  fprintf(stderr, " Unable to communicate with card (traceback: %s)\n",
-    //          __func__);
-    //  errstat = 3;
-    //  break;
-    // default:
-    //  fprintf(stderr, " Undocumented error! (traceback: %s)\n", __func__);
-    //  errstat = std::numeric_limits<int>::max();
-    //}
     return 1;
   }
 
@@ -120,6 +74,7 @@ int cool_to_temperature(int tempC, const andor2k::Socket *socket) noexcept {
   char status_str[MAX_STATUS_STRING_SIZE];
   while (status != DRV_TEMP_STABILIZED) {
     get_get_temperature_string(status, status_str);
+    
     if (status == DRV_TEMP_NOT_REACHED || status == DRV_TEMP_DRIFT ||
         status == DRV_TEMP_NOT_STABILIZED || DRV_TEMP_OFF) {
       printf("[DEBUG][%s] Temperature: %+4dC; %s\n", date_str(buf),
@@ -135,49 +90,6 @@ int cool_to_temperature(int tempC, const andor2k::Socket *socket) noexcept {
                        status, current_temp, status_str);
       return 1;
     }
-
-    // switch (status) {
-    // case DRV_NOT_INITIALIZED:
-    //  fprintf(stderr,
-    //          "[ERROR][%s] Cooling failed! System not initialized! (traceback:
-    //          "
-    //          "%s)\n",
-    //          date_str(buf), __func__);
-    //  errstat = 1;
-    //  break;
-    // case DRV_ACQUIRING:
-    //  fprintf(stderr,
-    //          "[ERROR][%s] Cooling failed! Acquisition in progress (traceback:
-    //          "
-    //          "%s)\n",
-    //          date_str(buf), __func__);
-    //  errstat = 2;
-    //  break;
-    // case DRV_ERROR_ACK:
-    //  fprintf(stderr,
-    //          "[ERROR][%s] Cooling failed! Unable to communicate with card "
-    //          "(traceback: %s)\n",
-    //          date_str(buf), __func__);
-    //  errstat = 3;
-    //  break;
-    // case DRV_TEMP_OFF:
-    //  printf("[DEBUG][%s] Cooler is off\n", date_str(buf));
-    //  break;
-    // case DRV_TEMP_NOT_REACHED:
-    //  printf("[DEBUG][%s] Cooling down ... temperature at: %+3dC\n",
-    //         date_str(buf), current_temp);
-    //  break;
-    // case DRV_TEMP_DRIFT:
-    //  printf("[DEBUG][%s] Temperature reached but since drifted ... "
-    //         "temperature at: %+3dC\n",
-    //         date_str(buf), current_temp);
-    //  break;
-    // case DRV_TEMP_NOT_STABILIZED:
-    //  printf("[DEBUG][%s] Temperature reached but not yet stabilized ... "
-    //         "temperature at: %+3dC\n",
-    //         date_str(buf), current_temp);
-    //  break;
-    //}
 
     // get current time; report and check that we are not taking too long
     auto current_time = std::chrono::high_resolution_clock::now();

@@ -62,7 +62,7 @@ int main() {
                     "Speeds for camera!");
   } else {
     float speed;
-    printf("Her is a list of available horizontal shift speeds:\n");
+    printf("Here is a list of available horizontal shift speeds:\n");
     for (int i = 0; i < num_speeds; i++) {
       if (GetHSSpeed(channel, type, i, &speed) != DRV_SUCCESS) {
         fprintf(stderr, "[ERROR][%s] Failed to get HS Speed with index %d\n",
@@ -77,7 +77,7 @@ int main() {
                     "for camera!");
   } else {
     float speed;
-    printf("Her is a list of available vertical shift speeds:\n");
+    printf("Here is a list of available vertical shift speeds:\n");
     for (int i = 0; i < num_speeds; i++) {
       if (GetVSSpeed(i, &speed) != DRV_SUCCESS) {
         fprintf(stderr, "[ERROR][%s] Failed to get VS Speed with index %d\n",
@@ -98,6 +98,71 @@ int main() {
         "[ERROR][%s] Failed to get fastest recommended Vertical Shift Speed!");
   }
 
+  printf("-- Checking Camera Gain Controls --\n");
+  int noGains;
+  if (GetNumberPreAmpGains(&noGains) != DRV_SUCCESS) {
+    fprintf(stderr, "ERROR in function GetNumberPreAmpGains\n");
+  }
+  printf("Number of allowed pre-amp gains: %d\n", noGains);
+
+  int amp;
+  if (GetNumberAmp(&amp) != DRV_SUCCESS) {
+    fprintf(stderr, "ERROR in function GetNumberPreAmp\n");
+  }
+  printf("Number of allowed amp channels: %d\n", amp);
+
+  int adchannels;
+  if (GetNumberADChannels(&adchannels) != DRV_SUCCESS) {
+    fprintf(stderr, "ERROR in function GetNumberADChannels\n");
+  }
+  printf("Number of allowed AD channels: %d\n", adchannels);
+
+  for (int channel = 0; channel < adchannels; channel++) {
+    int status;
+    for (int ampl = 0; ampl < amp; ampl++) {
+      for (int idx = 0; idx < 4; idx++) {
+        for (int pa = 0; pa < noGains; pa++) {
+          int error = IsPreAmpGainAvailable(channel, ampl, idx, pa, &status);
+          if (error == DRV_SUCCESS)
+            printf("%2d %2d %2d %2d %d\n", channel, ampl, idx, pa, status);
+          else {
+            if (error == DRV_P1INVALID) {
+              fprintf(stderr, "Invalid channel : %d\n", channel);
+            } else if (error == DRV_P2INVALID) {
+              fprintf(stderr, "Invalid amplifier : %d\n", amp);
+            } else if (error == DRV_P3INVALID) {
+              fprintf(stderr, "Invalid speed index : %d\n", idx);
+            } else if (error == DRV_P4INVALID) {
+              fprintf(stderr, "Invalid gain index : %d\n", pa);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  char ampstr[64];
+  int n;
+  if (GetCurrentPreAmpGain(&n, ampstr, 64) != DRV_SUCCESS) {
+    fprintf(stderr, "Funtion GetCurrentPreAmpGain returned error!\n");
+  }
+  printf("Current Pre-Amp gain for channel: %d is %s\n", n, ampstr);
+
+  //for (int i = 0; i < amp; i++) {
+  int i = 4;
+    // std::memset(ampstr, 0, sizeof(char) * 64);
+    error = GetAmpDesc(i, ampstr, 21);
+    if (error == DRV_P1INVALID) {
+      fprintf(stderr, "Invalid amplifier index %d\n", i);
+    } else if (error == DRV_SUCCESS) {
+      printf("Channel %d, description [%s]\n", ampstr);
+    } else {
+      fprintf(stderr, "Some kind of error ... \n");
+    }
+  //}
+
+  // All done, report exit
+  printf("Test seems ok, exiting now\n");
   ShutDown();
   return 0;
 }

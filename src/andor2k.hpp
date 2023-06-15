@@ -106,6 +106,9 @@ struct AndorParameters {
   float kinetics_cycle_time_{0.5}; // relevant for KineticSeries and
                                    // RunTillAbort; units is seconds
 
+  // horizontal speed, i.e. HSSpeed; we use the index here, in range [0,4)
+  int hsspeed = 1;
+
   /* shutter options */
   ShutterMode shutter_mode_{ShutterMode::FullyAuto};
   int shutter_closing_time_{50}, // in milliseconds
@@ -161,14 +164,15 @@ int get_next_fits_filename(const AndorParameters *params,
                            char *fits_fn) noexcept;
 
 int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
-                      int &width, int &height, float &vsspeed, float &hsspeed,
-                      at_32 *&img_mem) noexcept;
+                      int &width, int &height, float &vsspeed,
+                      float &hsspeed_mhz, at_32 *&img_mem) noexcept;
 
 int get_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
                     int xnumpixels, int ynumpixels, at_32 *img_buffer,
                     const andor2k::Socket &socket) noexcept;
 
-int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept;
+int set_fastest_recomended_vh_speeds(float &vspeed, int hsspeed_index,
+                                     float &hsspeed_mhz) noexcept;
 
 int coarse_exposure_time(const AndorParameters *params,
                          long &millisec_per_image,

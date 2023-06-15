@@ -25,7 +25,7 @@ extern int sig_interrupt_set;
 extern int abort_exposure_set;
 
 // buffers and constants for socket communication
-constexpr int INTITIALIZE_TO_TEMP = -90;
+constexpr int INTITIALIZE_TO_TEMP = -10;
 char fits_file[MAX_FITS_FILE_SIZE] = {'\0'};
 char now_str[32] = {'\0'}; // YYYY-MM-DD HH:MM:SS
 char buffer[MAX_SOCKET_BUFFER_SIZE];
@@ -171,8 +171,36 @@ int set_param_value(const char *command, AndorParameters &params) noexcept {
       printf("[DEBUG][%s] Changing Kinetic Cycle Time to : %.3fsec!\n",
              date_str(now_str), fval);
     } else if (!std::strncmp(token, "observername=", 13)) {
-      std::strcpy(params.observer_name_, token+13);
+      std::strcpy(params.observer_name_, token + 13);
       params.observer_name_[31] = '\0';
+    } else if (!std::strncmp(token, "hsspeed=", 8)) {
+      ival = std::strtod(token + 8, &end);
+      if (end == token) {
+        return 10;
+      }
+      // let's ask the cammera to match the index to a current MHz value
+      {
+        int num_speeds;
+        float speed;
+        if (GetNumberHSSpeeds(0, 0, &num_speeds) != DRV_SUCCESS) {
+          fprintf(stderr,
+                  "[WRNNG][%s] Failed to get number of available horizontal "
+                  "speeds for camera! (command: [%s])\n",
+                  date_str(now_str), token);
+          return 2;
+        }
+        if ((ival < 0 || ival >= num_speeds) ||
+            (GetHSSpeed(0, 0, ival, &speed) != DRV_SUCCESS)) {
+          fprintf(stderr,
+                  "[WRNNG][%s] Index is out of limits for horizontal speed ! "
+                  "(command: [%s])\n",
+                  date_str(now_str), token);
+          return 2;
+        }
+        printf("[DEBUG][%s] Changing horizontal shift speed to : %.3fMHz!\n",
+               date_str(now_str), speed);
+      }
+      params.hsspeed = ival;
     } else {
       fprintf(stderr,
               "[WRNNG][%s] Skipping token in paramter set command: [%s]\n",
@@ -211,7 +239,7 @@ int resolve_command(const char *command, const Socket &socket,
 
 int chat(const Socket &socket, AndorParameters &params) {
   int bytes_r;
-  
+
   for (;;) {
 
     // read message from client into buffer
@@ -286,8 +314,9 @@ int main() {
 
   // cool down if needed RUN
   if (cool_to_temperature(INTITIALIZE_TO_TEMP)) {
-      fprintf(stderr, "[FATAL][%s] Failed to set target temperature...exiting\n", date_str(now_str));
-      return 10;
+    fprintf(stderr, "[FATAL][%s] Failed to set target temperature...exiting\n",
+            date_str(now_str));
+    return 10;
   }
 
   try {
@@ -299,11 +328,12 @@ int main() {
            date_str(now_str));
 
     int shutdown_received = 0;
-    while (shutdown_received>=0) {
+    while (shutdown_received >= 0) {
       // creating hearing child socket
       Socket child_socket = server_sock.accept(sock_status);
       if (sock_status < 0) {
-        fprintf(stderr, "[FATAL][%s] Failed to create child socket ... exiting\n",
+        fprintf(stderr,
+                "[FATAL][%s] Failed to create child socket ... exiting\n",
                 date_str(now_str));
         return 1;
       }

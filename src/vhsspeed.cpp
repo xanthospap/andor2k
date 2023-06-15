@@ -17,7 +17,8 @@
 /// vertical shift speed (aka GetFastestRecommendedVSSpeed), no such function
 /// is available for the horizontal speed.
 /// @todo does this need the SetFrameTransferMode to be set to 1?
-int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept {
+int set_fastest_recomended_vh_speeds(float &vspeed, int hsspeed_index,
+                                     float &hsspeed_mhz) noexcept {
   char buf[32];
 
   // set vertical shift speed to fastest recommended
@@ -43,22 +44,18 @@ int set_fastest_recomended_vh_speeds(float &vspeed, float &hspeed) noexcept {
            date_str(buf), vspeed);
   }
 
-  // get horizontal speed shifts
-  int num_hspeeds;
-  error = GetNumberHSSpeeds(0, 0, &num_hspeeds);
-  // note that the shift speeds are always returned fastest first
+  // set horizontal speed shift
+  error = SetHSSpeed(0, hsspeed_index);
   if (error == DRV_SUCCESS) {
-    GetHSSpeed(0, 0, 0, &hspeed); // get first speed, aka the fastest
-    error = SetHSSpeed(0, 0);     // set the first speed, aka the fastest
-  }
-  if (error == DRV_SUCCESS) {
-    printf("[DEBUG][%s] Set Horizontal Shift Speed to fastest, that is %8.2ff "
-           "microseconds per pixel shift\n",
-           date_str(buf), hspeed);
+    // get the speed (horizontal) in MHz for the specified index
+    GetHSSpeed(0, 0, hsspeed_index, &hsspeed_mhz);
+    printf(
+        "[DEBUG][%s] Set Horizontal Shift Speed to index %d (i.e. %.3fMHz)\n",
+        date_str(buf), hsspeed_index, hsspeed_mhz);
   } else {
     fprintf(stderr,
-            "[ERROR][%s] Failed to set fastest HSSpeed (traceback: %s)\n",
-            date_str(buf), __func__);
+            "[ERROR][%s] Failed to set HSSpeed to index %d (traceback: %s)\n",
+            date_str(buf), hsspeed_index, __func__);
   }
 
   return (error == DRV_SUCCESS ? 0 : 1);

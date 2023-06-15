@@ -5,6 +5,7 @@
 #include "fits_header.hpp"
 #include <cstdio>
 #include <cstring>
+using namespace std::chrono_literals;
 
 /// @brief Setup an acquisition (single or multiple scans).
 /// The function will:
@@ -42,8 +43,8 @@
 ///   ANDOR2K system! Use the function GetAcquisitionTimings to get the actual
 ///   times to be used
 int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
-                      int &width, int &height, float &vsspeed, float &hsspeed,
-                      at_32 *&img_mem) noexcept {
+                      int &width, int &height, float &vsspeed,
+                      float &hsspeed_mhz, at_32 *&img_mem) noexcept {
 
   char buf[32] = {'\0'}; // buffer for datetime string
 
@@ -70,7 +71,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   }
 
   // set vertical and horizontal shift speeds
-  if (set_fastest_recomended_vh_speeds(vsspeed, hsspeed)) {
+  if (set_fastest_recomended_vh_speeds(vsspeed, params->hsspeed, hsspeed_mhz)) {
     fprintf(stderr,
             "[ERROR][%s] Failed to set shift speed(s)! (traceback: %s)\n",
             date_str(buf), __func__);
@@ -80,15 +81,17 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   // initialize shutter. Note that if we are taking a dark image, the shutter
   // should be closed!
   unsigned serror;
-  if (!std::strncmp(params->type_, "dark", 4)) {
-#ifdef DEBUG
-    printf(">> WARNING dark image to be taken; setting shutter mode to closed!\n");
-#endif
-    serror = SetShutter(1, ShutterMode2int(ShutterMode::PermanentlyClosed), params->shutter_closing_time_, params->shutter_opening_time_);
+  if (!std::strncmp(params->type_, "dark", 4) || !std::strncmp(params->type_, "bias", 4)) {
+    printf("[DEBUG][%s] Taking dark/bias frame so i am closing the shutter\n",
+           date_str(buf));
+    serror = SetShutter(1, ShutterMode2int(ShutterMode::PermanentlyClosed),
+                        params->shutter_closing_time_,
+                        params->shutter_opening_time_);
+    std::this_thread::sleep_for(1000ms);
   } else {
-    serror =
-      SetShutter(1, ShutterMode2int(params->shutter_mode_),
-                 params->shutter_closing_time_, params->shutter_opening_time_);
+    serror = SetShutter(1, ShutterMode2int(params->shutter_mode_),
+                        params->shutter_closing_time_,
+                        params->shutter_opening_time_);
   }
   if (serror != DRV_SUCCESS) {
     fprintf(stderr,
@@ -149,13 +152,14 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
       // do not stop if fetching headers fails!
     }
     if (ar_headers.size()) {
-    if (fheaders->merge(ar_headers, true) < 0) {
-      fprintf(stderr,
-              "[ERROR][%s] Failed merging Aristarchos headers to the previous "
-              "set! (traceback: %s)\n",
-              date_str(buf), __func__);
-      return 2;
-    }
+      if (fheaders->merge(ar_headers, true) < 0) {
+        fprintf(
+            stderr,
+            "[ERROR][%s] Failed merging Aristarchos headers to the previous "
+            "set! (traceback: %s)\n",
+            date_str(buf), __func__);
+        return 2;
+      }
     }
   }
 
@@ -182,7 +186,8 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
 
   int herror;
   herror = fheaders->update<float>(
-      "HSSPEED", hsspeed, "Horizontal Shift Speed (microsec / pixel shift)");
+      "HSSPEED", hsspeed_mhz,
+      "Horizontal Shift Speed (microsec / pixel shift)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for HSSPEED\n",
             date_str(buf));
@@ -192,9 +197,9 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for VSSPEED\n",
             date_str(buf));
-  
-  herror = fheaders->update("OBSERVER", params->observer_name_,
-                            "Observer name/id");
+
+  herror =
+      fheaders->update("OBSERVER", params->observer_name_, "Observer name/id");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for OBSERVER\n",
             date_str(buf));
@@ -269,8 +274,9 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   //          date_str(buf));
 
   // compute the start time correction for the headers
-  auto start_time_cor = start_time_correction(actual_exposure, vsspeed, hsspeed,
-                                              ynumpixels, xnumpixels);
+  auto start_time_cor = start_time_correction(
+      actual_exposure, vsspeed, hsspeed_mhz, ynumpixels, xnumpixels);
+  
   herror =
       fheaders->update<long>("TIMECORR", start_time_cor.count(),
                              "Timming correction already applied (nanosec)");

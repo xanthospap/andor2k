@@ -38,7 +38,7 @@ int exp2tick_every(long iexp) noexcept {
 }
 
 /// A class to handle reporting while an ANDOR2K image acquisition takes place.
-/// The only purpose of this class, is to call the report function (in a 
+/// The only purpose of this class, is to call the report function (in a
 /// different thatn the one waiting on the acquisition) and report the progress
 /// status of the exposure.
 /// @param[in] s A pointer to an (already opened) socket; the report function
@@ -51,7 +51,8 @@ int exp2tick_every(long iexp) noexcept {
 /// @param[in] s_start The start of the acquisition time, as a time_point. This
 ///              time should be after the StartAcquisition() call and before
 ///              the WaitForAcquisition().
-AcquisitionReporter::AcquisitionReporter(const andor2k::Socket *s, long exp_msec,
+AcquisitionReporter::AcquisitionReporter(const andor2k::Socket *s,
+                                         long exp_msec,
                                          const std_time_point &s_start) noexcept
     : socket(s), exposure_ms(exp_msec), series_start(s_start),
       every_ms(exp2tick_every(exp_msec)) {
@@ -67,29 +68,30 @@ AcquisitionReporter::AcquisitionReporter(const andor2k::Socket *s, long exp_msec
 /// performed in an every_ms millisecond interval.
 void AcquisitionReporter::report() noexcept {
   int it = 0;
-  #ifdef DEBUG
+#ifdef DEBUG
   char dbuf[64];
-  #endif
+#endif
 
   // get a lock instance but do not try to lock yet!
   std::unique_lock<std::mutex> lk(g_mtx, std::defer_lock);
-  
+
   // if we are getting a bias image (aka exposure time is 0), wrap up and exit
   // (aka) just send one message to client, that we are done
   if (!exposure_ms) {
 #ifdef DEBUG
-    printf("[DEBUG][%s] image is bias! not using locks (%s)!\n", date_str(dbuf), __func__);
+    printf("[DEBUG][%s] image is bias! not using locks (%s)!\n", date_str(dbuf),
+           __func__);
 #endif
     date_str(mbuf + len_const_prt);
     std::sprintf(mbuf + std::strlen(mbuf),
-                 "done;progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f", 100,
-                 100, 0e0, 0e0);
+                 "done;progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f",
+                 100, 100, 0e0, 0e0);
     return;
   }
 
   long from_series_start = 0;
   int image_done = 0, series_done = 0;
-  
+
   // report while we can't get a hold of the lock
   while (!lk.try_lock()) {
     // time now
@@ -127,7 +129,7 @@ void AcquisitionReporter::report() noexcept {
 
   // prepare last message to be sent (add datetime and indormation). we are
   // going to pretend that the acquisition is done 100% except if the (global)
-  // variable abort_set is non-zero, in which case probably the acquisition 
+  // variable abort_set is non-zero, in which case probably the acquisition
   // was aborted
   if (!abort_set) {
     image_done = 100;
@@ -137,8 +139,9 @@ void AcquisitionReporter::report() noexcept {
   series_done = image_done;
   date_str(mbuf + len_const_prt);
   std::sprintf(mbuf + std::strlen(mbuf),
-               ";progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f", image_done,
-               series_done, from_series_start / 1e3, from_series_start / 1e3);
+               ";progperc:%d;sprogperc:%d;elapsedt:%.2f;selapsedt:%.2f",
+               image_done, series_done, from_series_start / 1e3,
+               from_series_start / 1e3);
 
   // all done
   return;
