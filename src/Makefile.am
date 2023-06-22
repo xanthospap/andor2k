@@ -68,6 +68,7 @@ dist_libhelmosandor2k_la_SOURCES = \
 	andor_tools.cpp \
 	set_readout_mode.cpp \
 	set_acquisition_mode.cpp \
+	set_preampgain.cpp \
 	cooling.cpp \
 	fits_filenames.cpp \
 	sys_shutdown.cpp \

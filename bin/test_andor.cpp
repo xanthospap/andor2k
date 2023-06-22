@@ -105,6 +105,12 @@ int main() {
   }
   printf("Number of allowed pre-amp gains: %d\n", noGains);
 
+  for (int i=0; i<noGains; i++) {
+    float gain;
+    GetPreAmpGain(i, &gain);
+    printf("Pre-Amp gain factor for index %d is %.3f\n", i, gain);
+  }
+
   int amp;
   if (GetNumberAmp(&amp) != DRV_SUCCESS) {
     fprintf(stderr, "ERROR in function GetNumberPreAmp\n");
@@ -148,7 +154,6 @@ int main() {
   }
   printf("Current Pre-Amp gain for channel: %d is %s\n", n, ampstr);
 
-  //for (int i = 0; i < amp; i++) {
   int i = 4;
     // std::memset(ampstr, 0, sizeof(char) * 64);
     error = GetAmpDesc(i, ampstr, 21);

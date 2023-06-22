@@ -106,8 +106,11 @@ struct AndorParameters {
   float kinetics_cycle_time_{0.5}; // relevant for KineticSeries and
                                    // RunTillAbort; units is seconds
 
-  // horizontal speed, i.e. HSSpeed; we use the index here, in range [0,4)
+  /* horizontal speed, i.e. HSSpeed; we use the index here, in range [0,4) */
   int hsspeed = 1;
+
+  /* pre-amp gain factor;  we use the index here, in range [0,3) */
+  int preampgain = 0;
 
   /* shutter options */
   ShutterMode shutter_mode_{ShutterMode::FullyAuto};
@@ -149,6 +152,8 @@ int setup_acquisition_mode(const AndorParameters *) noexcept;
 
 int resolve_cmd_parameters(int argc, char *argv[],
                            AndorParameters &params) noexcept;
+
+int set_preampgain(const AndorParameters &params) noexcept;
 
 int cool_to_temperature(
     int temp_in_celsius,

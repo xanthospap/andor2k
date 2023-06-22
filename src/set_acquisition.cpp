@@ -5,6 +5,7 @@
 #include "fits_header.hpp"
 #include <cstdio>
 #include <cstring>
+
 using namespace std::chrono_literals;
 
 /// @brief Setup an acquisition (single or multiple scans).
@@ -77,6 +78,9 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
             date_str(buf), __func__);
     return 10;
   }
+
+  // set pre-amp gain
+  set_preampgain(*params);
 
   // initialize shutter. Note that if we are taking a dark image, the shutter
   // should be closed!

@@ -201,6 +201,28 @@ int set_param_value(const char *command, AndorParameters &params) noexcept {
                date_str(now_str), speed);
       }
       params.hsspeed = ival;
+    } else if (!std::strncmp(token, "preampgain=", 11)) {
+      ival = std::strtod(token + 11, &end);
+      if ((end == token) || (ival < 0 || ival >= 3)) {
+        fprintf(stderr,
+                "[WRNNG][%s] Index is out of limits for pre-amp gain! "
+                "(command: [%s])\n",
+                date_str(now_str), token);
+        return 11;
+      }
+      {
+        float fac;
+        if (GetPreAmpGain(ival, &fac) != DRV_SUCCESS) {
+          fprintf(stderr,
+                  "[ERROR][%s] Failed retrieving Pre-Amp Gain; wierd ..."
+                  "(traceback: %s)\n",
+                  date_str(now_str), __func__);
+          return 1;
+        }
+        printf("[DEBUG][%s] Changing Pre-Amp Gain factor to : %.1fx\n",
+               date_str(now_str), fac);
+      }
+      params.preampgain = ival;
     } else {
       fprintf(stderr,
               "[WRNNG][%s] Skipping token in paramter set command: [%s]\n",
