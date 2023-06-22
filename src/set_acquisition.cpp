@@ -85,7 +85,8 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   // initialize shutter. Note that if we are taking a dark image, the shutter
   // should be closed!
   unsigned serror;
-  if (!std::strncmp(params->type_, "dark", 4) || !std::strncmp(params->type_, "bias", 4)) {
+  if (!std::strncmp(params->type_, "dark", 4) ||
+      !std::strncmp(params->type_, "bias", 4)) {
     printf("[DEBUG][%s] Taking dark/bias frame so i am closing the shutter\n",
            date_str(buf));
     serror = SetShutter(1, ShutterMode2int(ShutterMode::PermanentlyClosed),
@@ -191,7 +192,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   int herror;
   herror = fheaders->update<float>(
       "HSSPEED", hsspeed_mhz,
-      "Horizontal Shift Speed (microsec / pixel shift)");
+      "Horizontal Shift Speed (microsec / pixel shift) in MHz");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for HSSPEED\n",
             date_str(buf));
@@ -200,6 +201,24 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
       "VSSPEED", vsspeed, "Vertical Shift Speed (microsec / pixel shift)");
   if (herror < 0)
     fprintf(stderr, "[WRNNG][%s] Failed to update header for VSSPEED\n",
+            date_str(buf));
+
+  float factor = -1;
+  {
+    if (GetPreAmpGain(params->preampgain, &factor) != DRV_SUCCESS) {
+      fprintf(stderr,
+              "[ERROR][%s] Failed retrieving Pre-Amp Gain for FITS header "
+              "(traceback: %s)\n",
+              date_str(buf), __func__);
+      return 1;
+    }
+  }
+  if (factor >= 0e0)
+    herror = fheaders->update<float>("GAIN", factor, "Pre-Amp Gain Factor");
+  else
+    herror = -1;
+  if (herror < 0)
+    fprintf(stderr, "[WRNNG][%s] Failed to update header for GAIN\n",
             date_str(buf));
 
   herror =
@@ -280,7 +299,7 @@ int setup_acquisition(const AndorParameters *params, FitsHeaders *fheaders,
   // compute the start time correction for the headers
   auto start_time_cor = start_time_correction(
       actual_exposure, vsspeed, hsspeed_mhz, ynumpixels, xnumpixels);
-  
+
   herror =
       fheaders->update<long>("TIMECORR", start_time_cor.count(),
                              "Timming correction already applied (nanosec)");
